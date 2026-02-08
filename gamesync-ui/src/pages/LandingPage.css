@@ -1,0 +1,77 @@
+/* src/pages/LandingPage.css */
+
+/* --- IMPORT FONT RPG (Cinzel) --- */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&display=swap');
+
+/* --- UTILITIES --- */
+.font-rpg {
+    font-family: 'Cinzel', serif;
+}
+
+/* --- KEYFRAME ANIMATIONS --- */
+
+/* 1. Kabut Misterius (Fog) */
+@keyframes fog-flow {
+    0% { transform: translateX(-10%) translateY(0); }
+    50% { transform: translateX(10%) translateY(-10%); }
+    100% { transform: translateX(-10%) translateY(0); }
+}
+
+.animate-fog-flow {
+    animation: fog-flow 20s ease-in-out infinite;
+}
+
+.animate-fog-flow-reverse {
+    animation: fog-flow 25s ease-in-out infinite reverse;
+}
+
+/* 2. Lingkaran Sihir Berputar (Magic Circle) */
+@keyframes spin-slow {
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.animate-spin-slow {
+    animation: spin-slow 60s linear infinite;
+    transform-origin: center;
+}
+
+/* 3. Partikel Api Naik (Rising Embers) */
+@keyframes ember-rise {
+    0% {
+        transform: translateY(0) scale(1);
+        opacity: 0;
+    }
+    20% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-100vh) scale(0);
+        opacity: 0;
+    }
+}
+
+.animate-ember-rise {
+    animation-name: ember-rise;
+    animation-timing-function: linear;
+    /* Duration & Delay diatur via inline style di React agar random */
+}
+
+/* 4. Efek Kilatan pada Tombol (Shine) */
+@keyframes shine {
+    100% { transform: translateX(100%); }
+}
+
+.group:hover .animate-shine {
+    animation: shine 0.7s forwards; /* Forwards agar tidak reset tiba-tiba */
+}
+
+/* 5. Denyut Nadi Pelan (Pulse) */
+@keyframes pulse-slow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+.animate-pulse-slow {
+    animation: pulse-slow 3s ease-in-out infinite;
+}

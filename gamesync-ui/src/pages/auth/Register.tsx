@@ -1,24 +1,26 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    Gamepad2,
+    UserPlus,
     Mail,
     Lock,
     User,
-    ShieldCheck,
-    UserPlus,
-    ArrowLeft
+    Shield,
+    ArrowLeft,
+    Scroll,
+    Crown
 } from 'lucide-react';
+import RPGBackground from '../../components/ui/RPGBackground';
 
 const Register: React.FC = () => {
     const navigate = useNavigate();
 
-    // State untuk form pendaftaran
+    // State Form
     const [formData, setFormData] = useState({
         username: '',
         email: '',
         password: '',
-        role: 'ANGGOTA' // Default role sebagai Anggota
+        role: 'ANGGOTA'
     });
 
     const [isLoading, setIsLoading] = useState(false);
@@ -27,118 +29,158 @@ const Register: React.FC = () => {
         e.preventDefault();
         setIsLoading(true);
 
-        // Simulasi pendaftaran dan penyimpanan ke LocalStorage
         setTimeout(() => {
-            console.log('User Registered:', formData);
-
-            // Simulasi: Setelah daftar, langsung arahkan ke login
-            alert(`Akun ${formData.username} sebagai ${formData.role} berhasil dibuat!`);
+            console.log('Hero Registered:', formData);
+            alert(`Hero ${formData.username} berhasil dipanggil! Silakan Login.`);
             navigate('/login');
             setIsLoading(false);
         }, 1500);
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-slate-950 p-4">
-            {/* Tombol Back ke Login */}
+        <div className="relative min-h-screen w-full flex items-center justify-center p-4 font-sans text-amber-50 selection:bg-amber-500/30 overflow-hidden">
+
+            {/* [LAYER 0] BACKGROUND MMORPG */}
+            <RPGBackground />
+
+            {/* [LAYER 1] TOMBOL KEMBALI */}
             <button
-                onClick={() => navigate('/login')}
-                className="absolute top-8 left-8 flex items-center gap-2 text-slate-500 hover:text-white transition-colors font-bold text-xs tracking-widest"
+                onClick={() => navigate('/')}
+                className="absolute top-6 left-6 z-20 flex items-center gap-3 text-amber-500/60 hover:text-amber-400 transition-all group font-bold text-[10px] tracking-[0.2em] uppercase"
             >
-                <ArrowLeft size={16} /> BACK TO LOGIN
+                <div className="p-2 rounded-full bg-black/40 border border-amber-900/30 group-hover:border-amber-500/50 group-hover:bg-amber-900/20 transition-colors">
+                    <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                </div>
+                Back to Portal
             </button>
 
-            <div className="w-full max-w-md space-y-8 rounded-3xl bg-slate-900 p-8 border border-slate-800 shadow-2xl relative overflow-hidden">
-                {/* Dekorasi Glow */}
-                <div className="absolute -top-24 -right-24 h-48 w-48 bg-indigo-600/10 blur-3xl rounded-full" />
+            {/* [LAYER 2] KARTU REGISTER */}
+            <div className="relative z-10 w-full max-w-md bg-black/60 backdrop-blur-xl p-8 md:p-10 rounded-3xl border border-amber-500/20 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden">
 
-                <div className="text-center relative">
-                    <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-600 shadow-lg mb-4">
-                        <UserPlus size={32} className="text-white" />
+                {/* Dekorasi Glow Internal */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 blur-[80px] rounded-full pointer-events-none"></div>
+
+                <div className="text-center mb-8">
+                    <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-800 to-black border border-amber-500/30 shadow-lg mb-4 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-white/10 skew-x-12 -translate-x-full animate-shine"></div>
+                        <UserPlus size={32} className="text-amber-400" />
                     </div>
-                    <h2 className="text-3xl font-black text-white tracking-tight">CREATE ACCOUNT</h2>
-                    <p className="text-slate-400 mt-1 text-xs uppercase tracking-[0.2em]">Join the GameSync Squad</p>
+                    <h2 className="text-2xl font-bold text-white tracking-tight font-rpg uppercase text-transparent bg-clip-text bg-gradient-to-b from-amber-100 to-amber-600">
+                        Summon New Hero
+                    </h2>
+                    <p className="text-amber-500/60 mt-2 text-xs uppercase tracking-[0.2em] font-bold">
+                        Join the Guild
+                    </p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-5 relative">
+                <form onSubmit={handleSubmit} className="space-y-5">
+
                     {/* Input Username */}
-                    <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Username</label>
+                    <div className="space-y-1.5 group">
+                        <label className="text-[10px] font-bold uppercase text-amber-500/70 ml-1 tracking-widest group-focus-within:text-amber-400 transition-colors">
+                            Hero Name
+                        </label>
                         <div className="relative">
-                            <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                            <User className="absolute left-4 top-1/2 -translate-y-1/2 text-amber-700 group-focus-within:text-amber-500 transition-colors" size={18} />
                             <input
                                 type="text"
                                 required
                                 value={formData.username}
                                 onChange={(e) => setFormData({...formData, username: e.target.value})}
-                                className="w-full rounded-xl bg-slate-800 border border-slate-700 py-3 pl-11 pr-4 text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all"
+                                className="w-full rounded-xl bg-black/40 border border-amber-900/40 py-3.5 pl-12 pr-4 text-amber-100 placeholder:text-amber-900/50 focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50 outline-none transition-all"
                                 placeholder="JufrinDev"
                             />
                         </div>
                     </div>
 
                     {/* Input Email */}
-                    <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Email Address</label>
+                    <div className="space-y-1.5 group">
+                        <label className="text-[10px] font-bold uppercase text-amber-500/70 ml-1 tracking-widest group-focus-within:text-amber-400 transition-colors">
+                            Owl Mail (Email)
+                        </label>
                         <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-amber-700 group-focus-within:text-amber-500 transition-colors" size={18} />
                             <input
                                 type="email"
                                 required
                                 value={formData.email}
                                 onChange={(e) => setFormData({...formData, email: e.target.value})}
-                                className="w-full rounded-xl bg-slate-800 border border-slate-700 py-3 pl-11 pr-4 text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all"
+                                className="w-full rounded-xl bg-black/40 border border-amber-900/40 py-3.5 pl-12 pr-4 text-amber-100 placeholder:text-amber-900/50 focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50 outline-none transition-all"
                                 placeholder="jufrin200@gmail.com"
                             />
                         </div>
                     </div>
 
-                    {/* Select Role */}
-                    <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Select Your Role</label>
+                    {/* Select Role (FIXED DARK OPTIONS) */}
+                    <div className="space-y-1.5 group">
+                        <label className="text-[10px] font-bold uppercase text-amber-500/70 ml-1 tracking-widest group-focus-within:text-amber-400 transition-colors">
+                            Guild Class
+                        </label>
                         <div className="relative">
-                            <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-500" size={18} />
+                            <Shield className="absolute left-4 top-1/2 -translate-y-1/2 text-amber-500 group-focus-within:text-amber-400 transition-colors" size={18} />
+
+                            {/* PERUBAHAN DI SINI: styling option */}
                             <select
                                 value={formData.role}
                                 onChange={(e) => setFormData({...formData, role: e.target.value})}
-                                className="w-full rounded-xl bg-slate-800 border border-slate-700 py-3 pl-11 pr-10 text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all appearance-none cursor-pointer"
+                                className="w-full rounded-xl bg-black/40 border border-amber-900/40 py-3.5 pl-12 pr-10 text-amber-100 focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50 outline-none transition-all appearance-none cursor-pointer hover:bg-amber-900/10"
                             >
-                                <option value="ANGGOTA">ANGGOTA (Member)</option>
-                                <option value="LEADER">LEADER (Squad Boss)</option>
-                                <option value="ADMIN">ADMIN (System)</option>
+                                {/* Tambahkan class bg-slate-900 untuk background gelap di dropdown */}
+                                <option value="ANGGOTA" className="bg-slate-900 text-amber-100 py-2">🛡️ ANGGOTA (Member)</option>
+                                <option value="LEADER" className="bg-slate-900 text-amber-100 py-2">👑 LEADER (Squad Boss)</option>
+                                {/*<option value="ADMIN" className="bg-slate-900 text-amber-100 py-2">⚙️ ADMIN (Game Master)</option>*/}
                             </select>
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                                <Gamepad2 size={16} />
+
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-amber-700">
+                                <Crown size={14} />
                             </div>
                         </div>
                     </div>
 
                     {/* Input Password */}
-                    <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Security Password</label>
+                    <div className="space-y-1.5 group">
+                        <label className="text-[10px] font-bold uppercase text-amber-500/70 ml-1 tracking-widest group-focus-within:text-amber-400 transition-colors">
+                            Secret Passcode
+                        </label>
                         <div className="relative">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-amber-700 group-focus-within:text-amber-500 transition-colors" size={18} />
                             <input
                                 type="password"
                                 required
                                 value={formData.password}
                                 onChange={(e) => setFormData({...formData, password: e.target.value})}
-                                className="w-full rounded-xl bg-slate-800 border border-slate-700 py-3 pl-11 pr-4 text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all"
+                                className="w-full rounded-xl bg-black/40 border border-amber-900/40 py-3.5 pl-12 pr-4 text-amber-100 placeholder:text-amber-900/50 focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50 outline-none transition-all"
                                 placeholder="••••••••"
                             />
                         </div>
                     </div>
 
+                    {/* Tombol Register */}
                     <button
                         type="submit"
                         disabled={isLoading}
-                        className={`w-full flex items-center justify-center gap-2 rounded-xl py-4 font-black text-xs tracking-[0.2em] text-white transition-all ${
-                            isLoading ? 'bg-slate-700' : 'bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 active:scale-[0.98]'
+                        className={`w-full flex items-center justify-center gap-3 rounded-xl py-4 font-bold text-xs tracking-[0.2em] uppercase transition-all mt-4 relative overflow-hidden group ${
+                            isLoading
+                                ? 'bg-amber-900/30 text-amber-500/50 cursor-not-allowed border border-amber-900/30'
+                                : 'bg-gradient-to-r from-amber-700 to-amber-900 text-white hover:shadow-[0_0_20px_rgba(245,158,11,0.4)] border border-amber-500/30 hover:scale-[1.02]'
                         }`}
                     >
-                        {isLoading ? "CREATING ACCOUNT..." : "REGISTER NOW"}
+                        {!isLoading && <div className="absolute inset-0 bg-white/20 skew-x-12 -translate-x-full group-hover:animate-shine" />}
+
+                        {isLoading ? "SUMMONING..." : "START ADVENTURE"}
                     </button>
                 </form>
+
+                {/* Footer Link */}
+                <div className="text-center pt-6 border-t border-amber-900/20 mt-6">
+                    <button
+                        onClick={() => navigate('/login')}
+                        className="text-amber-500/60 hover:text-amber-400 text-xs font-bold tracking-wider hover:underline transition-colors flex items-center justify-center gap-2 mx-auto"
+                    >
+                        <Scroll size={14} />
+                        Already have a hero? Login
+                    </button>
+                </div>
             </div>
         </div>
     );

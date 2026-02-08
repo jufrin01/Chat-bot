@@ -1,11 +1,20 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Gamepad2, Mail, Lock, LogIn, AlertCircle } from 'lucide-react';
+import {
+    Sword,
+    Mail,
+    Lock,
+    LogIn,
+    AlertCircle,
+    ArrowLeft,
+    Shield
+} from 'lucide-react';
+import RPGBackground from '../../components/ui/RPGBackground';
 
 const Login: React.FC = () => {
     const navigate = useNavigate();
 
-    // State untuk form login
+    // State Form
     const [email, setEmail] = useState<string>('');
     const [password, setPassword] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -16,102 +25,144 @@ const Login: React.FC = () => {
         setIsLoading(true);
         setError(null);
 
-        // Simulasi delay proses autentikasi
+        // Simulasi Request Server
         setTimeout(() => {
-            // LOGIKA LOGIN DUMMY JUFRIN
-            // Pastikan email dan password sama persis dengan instruksi kamu
+            // --- LOGIKA LOGIN DUMMY ---
             if (email === 'jufrin200@gmail.com' && password === '123') {
 
-                // 1. Simpan data ke LocalStorage agar dibaca oleh AppRouter
+                // 1. Simpan Session
                 localStorage.setItem('isLoggedIn', 'true');
                 localStorage.setItem('username', 'JufrinDev');
-                localStorage.setItem('role', 'LEADER'); // Default role kamu
+                localStorage.setItem('role', 'LEADER'); // Role: ADMIN / LEADER / ANGGOTA
 
-                // 2. Redirect paksa ke Dashboard agar state Router ter-refresh
+                // 2. Redirect Hard Refresh ke Dashboard (agar state Router ter-reset)
                 window.location.href = '/dashboard';
 
             } else {
-                // Tampilkan error jika kredensial tidak cocok
-                setError('Email atau Password salah! (Gunakan: jufrin200@gmail.com / 123)');
+                // Error Handler
+                setError('Kredensial tidak valid! (Gunakan: jufrin200@gmail.com / 123)');
                 setIsLoading(false);
             }
-        }, 1000);
+        }, 1500); // Delay 1.5 detik biar kerasa "Loading"
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-slate-950 p-4">
-            <div className="w-full max-w-md space-y-8 rounded-3xl bg-slate-900 p-8 border border-slate-800 shadow-2xl relative overflow-hidden">
+        <div className="relative min-h-screen w-full flex items-center justify-center p-4 font-sans text-amber-50 selection:bg-amber-500/30 overflow-hidden">
 
-                {/* Dekorasi Cahaya (Glow Effect) */}
-                <div className="absolute -top-24 -left-24 h-48 w-48 bg-indigo-600/10 blur-3xl rounded-full" />
+            {/* [LAYER 0] BACKGROUND MMORPG */}
+            <RPGBackground />
 
-                <div className="text-center relative">
-                    <div className="inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-indigo-600 shadow-lg mb-6">
-                        <Gamepad2 size={40} className="text-white" />
+            {/* [LAYER 1] TOMBOL KEMBALI */}
+            <button
+                onClick={() => navigate('/')}
+                className="absolute top-6 left-6 z-20 flex items-center gap-3 text-amber-500/60 hover:text-amber-400 transition-all group font-bold text-[10px] tracking-[0.2em] uppercase"
+            >
+                <div className="p-2 rounded-full bg-black/40 border border-amber-900/30 group-hover:border-amber-500/50 group-hover:bg-amber-900/20 transition-colors">
+                    <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                </div>
+                Return to Portal
+            </button>
+
+            {/* [LAYER 2] KARTU LOGIN (Glassmorphism) */}
+            <div className="relative z-10 w-full max-w-md bg-black/60 backdrop-blur-xl p-8 md:p-10 rounded-3xl border border-amber-500/20 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden">
+
+                {/* Dekorasi Glow Internal */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-1 bg-gradient-to-r from-transparent via-amber-500/50 to-transparent shadow-[0_0_15px_#f59e0b]"></div>
+
+                <div className="text-center mb-10">
+                    <div className="inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-700 to-amber-900 shadow-[0_0_20px_rgba(245,158,11,0.3)] mb-6 border border-amber-500/30 relative">
+                        <div className="absolute inset-0 border border-amber-400/20 rounded-2xl m-1"></div>
+                        <Sword size={40} className="text-white drop-shadow-md" />
                     </div>
-                    <h2 className="text-3xl font-black text-white tracking-tight">GAMESYNC</h2>
-                    <p className="text-slate-400 mt-2 text-xs uppercase tracking-[0.2em] font-bold">Login to Access Dashboard</p>
+                    <h2 className="text-3xl font-bold text-white tracking-tight font-rpg uppercase text-transparent bg-clip-text bg-gradient-to-b from-amber-100 to-amber-600">
+                        Enter Realm
+                    </h2>
+                    <p className="text-amber-500/60 mt-2 text-xs uppercase tracking-[0.2em] font-bold">
+                        Access Command Center
+                    </p>
                 </div>
 
                 {/* Notifikasi Error */}
                 {error && (
-                    <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/50 text-red-500 text-sm animate-pulse">
+                    <div className="flex items-center gap-3 p-4 mb-6 rounded-xl bg-red-900/20 border border-red-500/30 text-red-400 text-xs font-bold tracking-wide animate-pulse">
                         <AlertCircle size={18} />
                         <span>{error}</span>
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-6 relative">
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Email Address</label>
+                <form onSubmit={handleSubmit} className="space-y-6">
+
+                    {/* Input Email */}
+                    <div className="space-y-2 group">
+                        <label className="text-[10px] font-bold uppercase text-amber-500/70 ml-1 tracking-widest group-focus-within:text-amber-400 transition-colors">
+                            Adventurer ID (Email)
+                        </label>
                         <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-amber-700 group-focus-within:text-amber-500 transition-colors" size={20} />
                             <input
                                 type="email"
                                 required
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="w-full rounded-xl bg-slate-800 border border-slate-700 py-4 pl-11 pr-4 text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all"
+                                className="w-full rounded-xl bg-black/40 border border-amber-900/40 py-4 pl-12 pr-4 text-amber-100 placeholder:text-amber-900/50 focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50 outline-none transition-all"
                                 placeholder="jufrin200@gmail.com"
                             />
                         </div>
                     </div>
 
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Password</label>
+                    {/* Input Password */}
+                    <div className="space-y-2 group">
+                        <label className="text-[10px] font-bold uppercase text-amber-500/70 ml-1 tracking-widest group-focus-within:text-amber-400 transition-colors">
+                            Secret Passcode
+                        </label>
                         <div className="relative">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-amber-700 group-focus-within:text-amber-500 transition-colors" size={20} />
                             <input
                                 type="password"
                                 required
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="w-full rounded-xl bg-slate-800 border border-slate-700 py-4 pl-11 pr-4 text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all"
-                                placeholder="123"
+                                className="w-full rounded-xl bg-black/40 border border-amber-900/40 py-4 pl-12 pr-4 text-amber-100 placeholder:text-amber-900/50 focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50 outline-none transition-all"
+                                placeholder="••••••••"
                             />
                         </div>
                     </div>
 
+                    {/* Tombol Login */}
                     <button
                         type="submit"
                         disabled={isLoading}
-                        className={`w-full flex items-center justify-center gap-2 rounded-xl py-4 font-black text-xs tracking-widest text-white transition-all ${
-                            isLoading ? 'bg-slate-700 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 active:scale-[0.98]'
+                        className={`w-full flex items-center justify-center gap-3 rounded-xl py-4 font-bold text-xs tracking-[0.2em] uppercase transition-all relative overflow-hidden group ${
+                            isLoading
+                                ? 'bg-amber-900/30 text-amber-500/50 cursor-not-allowed border border-amber-900/30'
+                                : 'bg-gradient-to-r from-amber-700 to-amber-900 text-white hover:shadow-[0_0_20px_rgba(245,158,11,0.4)] border border-amber-500/30'
                         }`}
                     >
-                        {isLoading ? "AUTHENTICATING..." : <><LogIn size={20} /> SIGN IN</>}
+                        {/* Efek Shine saat Hover */}
+                        {!isLoading && <div className="absolute inset-0 bg-white/20 skew-x-12 -translate-x-full group-hover:animate-shine" />}
+
+                        {isLoading ? (
+                            <>
+                                <Shield size={18} className="animate-spin" /> VERIFYING MAGIC...
+                            </>
+                        ) : (
+                            <>
+                                <LogIn size={18} /> OPEN PORTAL
+                            </>
+                        )}
                     </button>
                 </form>
 
-                <div className="text-center pt-4">
-                    <p className="text-slate-500 text-xs">
-                        Don't have an account?{' '}
+                {/* Footer Link */}
+                <div className="text-center pt-8 border-t border-amber-900/20 mt-8">
+                    <p className="text-amber-500/40 text-xs">
+                        New to this realm?{' '}
                         <button
                             type="button"
                             onClick={() => navigate('/register')}
-                            className="text-indigo-400 hover:text-indigo-300 font-black"
+                            className="text-amber-500 hover:text-amber-300 font-bold tracking-wider hover:underline transition-all"
                         >
-                            CREATE ACCOUNT
+                            CREATE HERO
                         </button>
                     </p>
                 </div>
