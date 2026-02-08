@@ -1,8 +1,36 @@
+/* Import Tailwind CSS */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Reset dasar untuk memastikan tema gelap konsisten */
+:root {
+  color-scheme: dark;
+}
+
 body {
   margin: 0;
-  background-color: #020617;
+  padding: 0;
+  box-sizing: border-box;
+  background-color: #020617; /* Slate-950 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar kustom agar terlihat lebih modern seperti di dalam game */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a; /* Slate-900 */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155; /* Slate-700 */
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569; /* Slate-600 */
 }
