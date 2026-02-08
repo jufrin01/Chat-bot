@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    /* Target & Libraries */
+    "target": "ESNext",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+
+    /* Module Resolution */
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+
+    /* JSX Options */
+    "jsx": "react-jsx",
+
+    /* Path Mapping (Anotasi @) */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+
+    /* Stricter Typechecking */
+    "noUncheckedIndexedAccess": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"]
+}
