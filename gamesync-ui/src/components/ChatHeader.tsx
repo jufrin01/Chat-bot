@@ -1,26 +1,32 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
     Bot,
-    Hash,
     Circle,
-    ChevronRight,
-    ShieldAlert
+    ChevronRight
 } from 'lucide-react';
 
-// Interface dibuat fleksibel agar bisa menangani Channel atau User
+// Interface fleksibel untuk menangani Channel, User, atau Bot
 interface ChatHeaderProps {
-    title?: string;         // Menggantikan 'username' agar lebih umum
-    subtitle?: string;      // Menggantikan 'status'
-    type?: 'CHANNEL' | 'USER' | 'BOT'; // Untuk menentukan Icon
-    onlineCount?: number;   // Opsional: Jika ingin menampilkan jumlah user online
+    title?: string;         // Nama ruangan atau user
+    subtitle?: string;      // Deskripsi atau status
+    type?: 'CHANNEL' | 'USER' | 'BOT';
+    onlineCount?: number;   // Jumlah user online
 }
 
 const ChatHeader: React.FC<ChatHeaderProps> = ({
-                                                   title = "Unknown Channel",
-                                                   subtitle = "System Offline",
+                                                   title = "General Tavern",
+                                                   subtitle = "Realm Connection Established",
                                                    type = "CHANNEL",
                                                    onlineCount = 0
                                                }) => {
+
+    // --- LOGGING SINKRONISASI ---
+    useEffect(() => {
+        console.log("=== CHAT HEADER SYNCED ===");
+        console.log("Header Title:", title);
+        console.log("Header Type:", type);
+        console.log("Online Status:", onlineCount > 0 ? `${onlineCount} heroes active` : "System Online");
+    }, [title, type, onlineCount]);
 
     // Helper: Pilih Icon berdasarkan Tipe
     const renderIcon = () => {
@@ -34,22 +40,22 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
         }
     };
 
-    // Helper: Warna Background Icon
+    // Helper: Warna Background Icon (RPG Style)
     const getIconStyle = () => {
         switch (type) {
             case 'BOT': return 'bg-indigo-600 shadow-indigo-500/20';
             case 'USER': return 'bg-slate-700 shadow-slate-500/20';
-            default: return 'bg-black/40 border border-amber-500/30 shadow-amber-500/10'; // RPG Style
+            default: return 'bg-black/40 border border-amber-500/30 shadow-amber-500/10';
         }
     };
 
     return (
         <div className="w-full h-20 bg-black/40 border-b border-amber-900/30 backdrop-blur-md flex items-center justify-between px-6 relative z-30">
 
-            {/* Bagian Kiri: Icon & Judul */}
+            {/* Bagian Kiri: Icon & Judul Dinamis */}
             <div className="flex items-center gap-4">
-                {/* Icon Container */}
-                <div className={`h-10 w-10 rounded-xl flex items-center justify-center shadow-lg transition-all ${getIconStyle()}`}>
+                {/* Icon Container dengan Animasi Glow jika Online */}
+                <div className={`h-10 w-10 rounded-xl flex items-center justify-center shadow-lg transition-all transform hover:scale-105 ${getIconStyle()}`}>
                     {renderIcon()}
                 </div>
 
@@ -58,6 +64,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
                         {title}
                     </h2>
                     <div className="flex items-center gap-2">
+                        {/* Status Indicator (Pulse Green) */}
                         <span className="relative flex h-2 w-2">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                           <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -69,12 +76,15 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
                 </div>
             </div>
 
-            {/* Bagian Kanan (Opsional): Bisa ditambah tombol search/menu di sini jika perlu */}
+            {/* Bagian Kanan: Badge Server */}
             <div className="hidden md:flex items-center gap-2">
                 {type === 'CHANNEL' && (
-                    <span className="px-2 py-1 rounded bg-amber-900/20 border border-amber-500/20 text-[10px] font-bold text-amber-500 uppercase">
-                        Official Server
-                    </span>
+                    <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-amber-900/20 border border-amber-500/20">
+                        <span className="w-1 h-1 rounded-full bg-amber-500 animate-pulse"></span>
+                        <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">
+                            Official Realm
+                        </span>
+                    </div>
                 )}
             </div>
         </div>

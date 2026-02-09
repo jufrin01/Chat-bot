@@ -8,9 +8,11 @@ import {
     Shield,
     ArrowLeft,
     Scroll,
-    Crown
+    Crown,
+    AlertCircle // Icon untuk pesan error
 } from 'lucide-react';
 import RPGBackground from '../../components/ui/RPGBackground';
+import api from '../../api/axios'; // Import konfigurasi Axios
 
 const Register: React.FC = () => {
     const navigate = useNavigate();
@@ -20,21 +22,47 @@ const Register: React.FC = () => {
         username: '',
         email: '',
         password: '',
-        role: 'ANGGOTA'
+        role: 'USER' // Default role (walaupun backend mungkin memaksa USER dulu)
     });
 
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null); // State untuk menangkap error dari backend
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
+        setError(null);
 
-        setTimeout(() => {
-            console.log('Hero Registered:', formData);
+        try {
+            // 1. Tembak API Register Backend
+            const response = await api.post('/auth/signup', {
+                username: formData.username,
+                email: formData.email,
+                password: formData.password
+                // Note: Role dikirim tapi di backend logic saat ini default-nya "USER"
+                // Jika ingin role dinamis, logic AuthService di backend perlu disesuaikan.
+            });
+
+            console.log('Registration Success:', response.data);
+
+            // 2. Notifikasi Sukses
             alert(`Hero ${formData.username} berhasil dipanggil! Silakan Login.`);
+
+            // 3. Redirect ke halaman Login
             navigate('/login');
+
+        } catch (err: any) {
+            console.error("Registration Failed:", err);
+
+            // 4. Tangkap pesan error dari Backend (misal: "Error: Email is already in use!")
+            if (err.response && err.response.data) {
+                setError(err.response.data.message || "Gagal mendaftar. Coba lagi.");
+            } else {
+                setError("Server tidak merespons. Pastikan Backend sudah jalan.");
+            }
+        } finally {
             setIsLoading(false);
-        }, 1500);
+        }
     };
 
     return (
@@ -72,6 +100,14 @@ const Register: React.FC = () => {
                         Join the Guild
                     </p>
                 </div>
+
+                {/* ERROR ALERT BOX */}
+                {error && (
+                    <div className="flex items-center gap-3 p-4 mb-6 rounded-xl bg-red-900/20 border border-red-500/30 text-red-400 text-xs font-bold tracking-wide animate-pulse">
+                        <AlertCircle size={18} />
+                        <span>{error}</span>
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit} className="space-y-5">
 
@@ -111,7 +147,7 @@ const Register: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Select Role (FIXED DARK OPTIONS) */}
+                    {/* Select Role */}
                     <div className="space-y-1.5 group">
                         <label className="text-[10px] font-bold uppercase text-amber-500/70 ml-1 tracking-widest group-focus-within:text-amber-400 transition-colors">
                             Guild Class
@@ -119,16 +155,13 @@ const Register: React.FC = () => {
                         <div className="relative">
                             <Shield className="absolute left-4 top-1/2 -translate-y-1/2 text-amber-500 group-focus-within:text-amber-400 transition-colors" size={18} />
 
-                            {/* PERUBAHAN DI SINI: styling option */}
                             <select
                                 value={formData.role}
                                 onChange={(e) => setFormData({...formData, role: e.target.value})}
                                 className="w-full rounded-xl bg-black/40 border border-amber-900/40 py-3.5 pl-12 pr-10 text-amber-100 focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50 outline-none transition-all appearance-none cursor-pointer hover:bg-amber-900/10"
                             >
-                                {/* Tambahkan class bg-slate-900 untuk background gelap di dropdown */}
-                                <option value="ANGGOTA" className="bg-slate-900 text-amber-100 py-2">🛡️ ANGGOTA (Member)</option>
+                                <option value="USER" className="bg-slate-900 text-amber-100 py-2">🛡️ ADVENTURER (User)</option>
                                 <option value="LEADER" className="bg-slate-900 text-amber-100 py-2">👑 LEADER (Squad Boss)</option>
-                                {/*<option value="ADMIN" className="bg-slate-900 text-amber-100 py-2">⚙️ ADMIN (Game Master)</option>*/}
                             </select>
 
                             <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-amber-700">

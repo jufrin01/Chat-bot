@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Sword,
-    Mail,
+    User,
     Lock,
     LogIn,
     AlertCircle,
@@ -10,49 +10,84 @@ import {
     Shield
 } from 'lucide-react';
 import RPGBackground from '../../components/ui/RPGBackground';
+import api from '../../api/axios'; // Pastikan path ini sesuai dengan file axios.ts kamu
 
 const Login: React.FC = () => {
     const navigate = useNavigate();
 
-    // State Form
-    const [email, setEmail] = useState<string>('');
+    // State untuk menangkap input user
+    const [username, setUsername] = useState<string>('');
     const [password, setPassword] = useState<string>('');
+
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
         setError(null);
 
-        // Simulasi Request Server
-        setTimeout(() => {
-            // --- LOGIKA LOGIN DUMMY ---
-            if (email === 'jufrin200@gmail.com' && password === '123') {
+        // [LOG 1] Cek apakah data input sudah benar sebelum dikirim
+        console.log("=== ATTEMPTING LOGIN ===");
+        console.log("Payload to Backend:", { username, password });
 
-                // 1. Simpan Session
-                localStorage.setItem('isLoggedIn', 'true');
-                localStorage.setItem('username', 'JufrinDev');
-                localStorage.setItem('role', 'LEADER'); // Role: ADMIN / LEADER / ANGGOTA
+        try {
+            // 1. Tembak API Backend
+            const response = await api.post('/auth/signin', {
+                username: username,
+                password: password
+            });
 
-                // 2. Redirect Hard Refresh ke Dashboard (agar state Router ter-reset)
-                window.location.href = '/dashboard';
+            // [LOG 2] Cek apakah Backend membalas dan apa isinya
+            console.log("Login Response Success:", response.data);
 
+            const { token, id, username: dbUsername, role, guildId } = response.data;
+
+            // 3. Simpan ke LocalStorage
+            localStorage.setItem('token', token);
+            localStorage.setItem('user', JSON.stringify({
+                id,
+                username: dbUsername,
+                role,
+                guildId
+            }));
+
+            console.log("Data saved to LocalStorage. Redirecting...");
+
+            // 4. Redirect
+            window.location.href = '/dashboard';
+
+        } catch (err: any) {
+            // [LOG 3] Jika gagal, cek errornya di mana (CORS, 401, atau Server Mati)
+            console.error("=== LOGIN ERROR ===");
+
+            if (err.response) {
+                // Server merespon tapi dengan status error (400, 401, 500)
+                console.error("Status Code:", err.response.status);
+                console.error("Error Data from Backend:", err.response.data);
+                setError(err.response.data.message || "Authentication failed.");
+            } else if (err.request) {
+                // Request terkirim tapi tidak ada respon (Server mati)
+                console.error("No response from server. Check if Backend is running.");
+                setError("Server is offline.");
             } else {
-                // Error Handler
-                setError('Kredensial tidak valid! (Gunakan: jufrin200@gmail.com / 123)');
-                setIsLoading(false);
+                // Error lainnya (settingan axios, dll)
+                console.error("Setup Error:", err.message);
+                setError("Application Error.");
             }
-        }, 1500); // Delay 1.5 detik biar kerasa "Loading"
+        } finally {
+            setIsLoading(false);
+            console.log("=== LOGIN PROCESS FINISHED ===");
+        }
     };
 
     return (
         <div className="relative min-h-screen w-full flex items-center justify-center p-4 font-sans text-amber-50 selection:bg-amber-500/30 overflow-hidden">
 
-            {/* [LAYER 0] BACKGROUND MMORPG */}
+            {/* Background bertema RPG */}
             <RPGBackground />
 
-            {/* [LAYER 1] TOMBOL KEMBALI */}
+            {/* Tombol Kembali ke Landing Page */}
             <button
                 onClick={() => navigate('/')}
                 className="absolute top-6 left-6 z-20 flex items-center gap-3 text-amber-500/60 hover:text-amber-400 transition-all group font-bold text-[10px] tracking-[0.2em] uppercase"
@@ -63,10 +98,10 @@ const Login: React.FC = () => {
                 Return to Portal
             </button>
 
-            {/* [LAYER 2] KARTU LOGIN (Glassmorphism) */}
+            {/* Form Login Card */}
             <div className="relative z-10 w-full max-w-md bg-black/60 backdrop-blur-xl p-8 md:p-10 rounded-3xl border border-amber-500/20 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden">
 
-                {/* Dekorasi Glow Internal */}
+                {/* Dekorasi Garis Glow */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-1 bg-gradient-to-r from-transparent via-amber-500/50 to-transparent shadow-[0_0_15px_#f59e0b]"></div>
 
                 <div className="text-center mb-10">
@@ -74,7 +109,7 @@ const Login: React.FC = () => {
                         <div className="absolute inset-0 border border-amber-400/20 rounded-2xl m-1"></div>
                         <Sword size={40} className="text-white drop-shadow-md" />
                     </div>
-                    <h2 className="text-3xl font-bold text-white tracking-tight font-rpg uppercase text-transparent bg-clip-text bg-gradient-to-b from-amber-100 to-amber-600">
+                    <h2 className="text-3xl font-bold text-white tracking-tight uppercase text-transparent bg-clip-text bg-gradient-to-b from-amber-100 to-amber-600">
                         Enter Realm
                     </h2>
                     <p className="text-amber-500/60 mt-2 text-xs uppercase tracking-[0.2em] font-bold">
@@ -82,7 +117,7 @@ const Login: React.FC = () => {
                     </p>
                 </div>
 
-                {/* Notifikasi Error */}
+                {/* Pesan Error Alert */}
                 {error && (
                     <div className="flex items-center gap-3 p-4 mb-6 rounded-xl bg-red-900/20 border border-red-500/30 text-red-400 text-xs font-bold tracking-wide animate-pulse">
                         <AlertCircle size={18} />
@@ -91,21 +126,20 @@ const Login: React.FC = () => {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-6">
-
-                    {/* Input Email */}
+                    {/* Input Username */}
                     <div className="space-y-2 group">
                         <label className="text-[10px] font-bold uppercase text-amber-500/70 ml-1 tracking-widest group-focus-within:text-amber-400 transition-colors">
-                            Adventurer ID (Email)
+                            Adventurer Username
                         </label>
                         <div className="relative">
-                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-amber-700 group-focus-within:text-amber-500 transition-colors" size={20} />
+                            <User className="absolute left-4 top-1/2 -translate-y-1/2 text-amber-700 group-focus-within:text-amber-50 text-amber-500 transition-colors" size={20} />
                             <input
-                                type="email"
+                                type="text"
                                 required
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
                                 className="w-full rounded-xl bg-black/40 border border-amber-900/40 py-4 pl-12 pr-4 text-amber-100 placeholder:text-amber-900/50 focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50 outline-none transition-all"
-                                placeholder="jufrin200@gmail.com"
+                                placeholder="Enter hero name..."
                             />
                         </div>
                     </div>
@@ -116,7 +150,7 @@ const Login: React.FC = () => {
                             Secret Passcode
                         </label>
                         <div className="relative">
-                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-amber-700 group-focus-within:text-amber-500 transition-colors" size={20} />
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-amber-700 group-focus-within:text-amber-50 text-amber-500 transition-colors" size={20} />
                             <input
                                 type="password"
                                 required
@@ -128,7 +162,7 @@ const Login: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Tombol Login */}
+                    {/* Tombol Submit */}
                     <button
                         type="submit"
                         disabled={isLoading}
@@ -138,7 +172,6 @@ const Login: React.FC = () => {
                                 : 'bg-gradient-to-r from-amber-700 to-amber-900 text-white hover:shadow-[0_0_20px_rgba(245,158,11,0.4)] border border-amber-500/30'
                         }`}
                     >
-                        {/* Efek Shine saat Hover */}
                         {!isLoading && <div className="absolute inset-0 bg-white/20 skew-x-12 -translate-x-full group-hover:animate-shine" />}
 
                         {isLoading ? (
@@ -153,7 +186,7 @@ const Login: React.FC = () => {
                     </button>
                 </form>
 
-                {/* Footer Link */}
+                {/* Footer Link Register */}
                 <div className="text-center pt-8 border-t border-amber-900/20 mt-8">
                     <p className="text-amber-500/40 text-xs">
                         New to this realm?{' '}

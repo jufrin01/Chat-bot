@@ -1,4 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
+import SockJS from 'sockjs-client';
+// Menggunakan import * as untuk mengakses objek Stomp di dalam file lib
+import * as Stomp from 'stompjs/lib/stomp.js';
+
 import DashboardLayout from '../../layout/DashboardLayout';
 import ChatHeader from '../../components/ChatHeader';
 import ChatArea from '../../components/ChatArea';
@@ -9,7 +13,7 @@ import Settings from './Settings';
 import Chronicles from '../../layout/Chronicles';
 import WelcomeToast from '../../components/ui/WelcomeToast';
 
-import { INITIAL_MESSAGES } from '../../data/dummy';
+import api from '../../api/axios';
 import { Message } from '../../types/chat';
 
 interface DashboardProps {
@@ -19,18 +23,102 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     // --- STATE MANAGEMENT ---
     const [activeTab, setActiveTab] = useState<'chat' | 'schedule' | 'squads' | 'chronicles' | 'settings'>('chat');
-    const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
+    const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState<string>('');
     const [showWelcome, setShowWelcome] = useState(false);
 
+    const stompClientRef = useRef<any>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    const username = localStorage.getItem('username') || 'Adventurer';
-    const userRole = localStorage.getItem('role') || 'ANGGOTA';
+    const userString = localStorage.getItem('user');
+    const userData = userString ? JSON.parse(userString) : null;
+    const username = userData?.username || 'Adventurer';
 
+    // --- EFFECT 1: INITIAL LOAD (History & Welcome Logic) ---
     useEffect(() => {
-        setShowWelcome(true);
-    }, []);
+        console.log("=== DASHBOARD INITIALIZED ===");
+
+        // Cek sessionStorage agar Toast hanya muncul 1 kali per sesi
+        const hasBeenWelcomed = sessionStorage.getItem('hasBeenWelcomed');
+        if (!hasBeenWelcomed) {
+            setShowWelcome(true);
+            sessionStorage.setItem('hasBeenWelcomed', 'true');
+        }
+
+        // Ambil history chat saat pertama kali masuk
+        fetchChatHistory();
+    }, []); // Dependency array kosong agar hanya jalan sekali saat mount
+
+    // --- EFFECT 2: FETCH HISTORY ON TAB CHANGE ---
+    useEffect(() => {
+        if (activeTab === 'chat') {
+            fetchChatHistory();
+        }
+    }, [activeTab]);
+
+    // --- EFFECT 3: WEBSOCKET CONNECTION ---
+    useEffect(() => {
+        const socket = new SockJS('http://localhost:8080/ws');
+        const stompClient = Stomp.Stomp.over(socket);
+
+        stompClient.debug = () => {}; // Mematikan log debug agar console bersih
+
+        stompClient.connect({}, (frame: any) => {
+            console.log('Connected to Realm Socket: ' + frame);
+            stompClientRef.current = stompClient;
+
+            stompClient.subscribe('/topic/public', (payload: any) => {
+                const newMessage = JSON.parse(payload.body);
+
+                setMessages((prev) => {
+                    // Cek duplikasi agar pesan tidak muncul dua kali
+                    const isDuplicate = prev.some(m =>
+                        (m.timestamp === newMessage.timestamp && m.senderId === newMessage.senderId) ||
+                        (m.content === newMessage.content && m.senderId === newMessage.senderId)
+                    );
+                    return isDuplicate ? prev : [...prev, newMessage];
+                });
+            });
+        }, (error: any) => {
+            console.error("WebSocket connection error:", error);
+        });
+
+        return () => {
+            if (stompClientRef.current) {
+                stompClientRef.current.disconnect();
+            }
+        };
+    }, [userData?.id]);
+
+    const fetchChatHistory = async () => {
+        try {
+            const response = await api.get('/chat/history');
+            setMessages(response.data);
+        } catch (error: any) {
+            console.error("Failed to fetch history:", error);
+        }
+    };
+
+    const handleSend = async () => {
+        if (!input.trim()) return;
+
+        const chatPayload = {
+            content: input,
+            senderId: userData?.id,
+            senderName: username,
+            senderRole: userData?.role || 'USER',
+            type: 'CHAT',
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+
+        try {
+            const response = await api.post('/chat/send', chatPayload);
+            setMessages((prev) => [...prev, response.data]);
+            setInput('');
+        } catch (error: any) {
+            console.error("Failed to send message:", error);
+        }
+    };
 
     useEffect(() => {
         if (activeTab === 'chat' && scrollRef.current) {
@@ -38,68 +126,29 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         }
     }, [messages, activeTab]);
 
-    const processCommand = (cmd: string) => {
-        const lowerCmd = cmd.toLowerCase().trim();
-        // ... (Logic Command Sama Seperti Sebelumnya) ...
-        if (lowerCmd.startsWith('/roll')) {
-            // ... logic roll
-            return true;
-        }
-        if (lowerCmd === '/clear') {
-            setMessages([]);
-            return true;
-        }
-        return false;
-    };
-
-    const handleSend = () => {
-        if (!input.trim()) return;
-        const isCommand = processCommand(input);
-
-        if (!isCommand) {
-            const userMsg: Message = {
-                role: 'user',
-                text: input,
-                senderName: username,
-                senderRole: userRole as any,
-                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            };
-            setMessages((prev) => [...prev, userMsg]);
-
-            // Auto Reply
-            setTimeout(() => {
-                const aiMsg: Message = {
-                    role: 'ai',
-                    text: "System Online.",
-                    senderName: 'Oracle Bot',
-                    senderRole: 'BOT',
-                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                };
-                setMessages((prev) => [...prev, aiMsg]);
-            }, 1000);
-        }
-        setInput('');
-    };
-
     const renderContent = () => {
         switch (activeTab) {
             case 'chat':
                 return (
-                    <div className="flex flex-col h-full overflow-hidden relative">
-                        {/* HEADER: Transparent */}
+                    <div className="flex flex-col h-[calc(100vh-12rem)] md:h-[calc(100vh-10rem)] bg-black/20 rounded-3xl border border-amber-900/20 backdrop-blur-sm overflow-hidden shadow-2xl">
                         <ChatHeader
-                            title="Tavern Chat"
-                            subtitle="Main gathering hall for heroes and strategists."
+                            title="General Tavern"
+                            subtitle="Realm Connection Established"
                             type="CHANNEL"
                             onlineCount={128}
                         />
 
                         <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6 custom-scrollbar relative z-10">
-                            <ChatArea messages={messages} />
+                            {messages.length === 0 ? (
+                                <div className="text-center text-amber-500/30 mt-20 italic">
+                                    The Tavern is quiet... No messages yet.
+                                </div>
+                            ) : (
+                                <ChatArea messages={messages} />
+                            )}
                             <div ref={scrollRef} />
                         </div>
 
-                        {/* FOOTER: UBAH JADI TRANSPARAN (bg-black/20) */}
                         <footer className="w-full py-4 px-4 bg-black/20 backdrop-blur-xl border-t border-amber-900/10 relative z-20 flex justify-center items-center shadow-[0_-5px_20px_rgba(0,0,0,0.1)]">
                             <ChatInput
                                 input={input}
