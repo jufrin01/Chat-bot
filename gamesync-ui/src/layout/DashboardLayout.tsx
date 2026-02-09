@@ -14,47 +14,16 @@ import {
     ChevronRight,
     TrendingUp,
     ShieldAlert,
-    Mail,
-    Zap,
-    CheckCircle2
+    Mail
 } from 'lucide-react';
 import RPGBackground from '../components/ui/RPGBackground';
 import UserPhoto from '../components/ui/UserPhoto';
 
-// --- 1. DATA DUMMY NOTIFIKASI (RPG THEME) ---
+// --- DATA DUMMY NOTIFIKASI ---
 const DUMMY_NOTIFS = [
-    {
-        id: 1,
-        title: "New Raid Available",
-        desc: "Boss 'Baron Nashor' has spawned in Baron Pit!",
-        time: "2m ago",
-        type: 'quest',
-        read: false
-    },
-    {
-        id: 2,
-        title: "Guild Invitation",
-        desc: "You have been invited to join 'Crimson Vanguard'.",
-        time: "1h ago",
-        type: 'guild',
-        read: false
-    },
-    {
-        id: 3,
-        title: "System Update",
-        desc: "Server maintenance scheduled for 00:00 UTC.",
-        time: "5h ago",
-        type: 'system',
-        read: true
-    },
-    {
-        id: 4,
-        title: "Message from Admin",
-        desc: "Your account has been promoted to 'Veteran'.",
-        time: "1d ago",
-        type: 'chat',
-        read: true
-    },
+    { id: 1, title: "New Raid Available", desc: "Boss 'Baron Nashor' has spawned!", time: "2m ago", type: 'quest', read: false },
+    { id: 2, title: "Guild Invitation", desc: "Invited to 'Crimson Vanguard'.", time: "1h ago", type: 'guild', read: false },
+    { id: 3, title: "System Update", desc: "Server maintenance at 00:00 UTC.", time: "5h ago", type: 'system', read: true },
 ];
 
 interface DashboardLayoutProps {
@@ -73,16 +42,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                                                              headerTitle
                                                          }) => {
 
-    // --- STATE ---
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const [isDesktopOpen, setIsDesktopOpen] = useState(true);
-
-    // State untuk Notifikasi Dropdown
     const [isNotifOpen, setIsNotifOpen] = useState(false);
     const notifRef = useRef<HTMLDivElement>(null);
 
-    // --- HELPER ---
-    // Tutup notifikasi jika klik di luar
+    // Helper: Close notif on click outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
@@ -93,7 +58,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // Reset sidebar saat resize
+    // Helper: Resize handler
     useEffect(() => {
         const handleResize = () => {
             if (window.innerWidth < 1024) setIsDesktopOpen(true);
@@ -103,11 +68,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     }, []);
 
     const toggleSidebar = () => {
-        if (window.innerWidth < 1024) {
-            setIsMobileOpen(!isMobileOpen);
-        } else {
-            setIsDesktopOpen(!isDesktopOpen);
-        }
+        if (window.innerWidth < 1024) setIsMobileOpen(!isMobileOpen);
+        else setIsDesktopOpen(!isDesktopOpen);
     };
 
     const menuItems = [
@@ -118,7 +80,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         { id: 'settings', label: 'Inventory', icon: <Settings size={20} /> },
     ];
 
-    // Helper Icon Notifikasi
     const getNotifIcon = (type: string) => {
         switch (type) {
             case 'quest': return <Sword size={14} className="text-red-400" />;
@@ -131,7 +92,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     return (
         <div className="flex h-screen w-full overflow-hidden relative font-sans text-amber-50 selection:bg-amber-500/30">
 
-            {/* BACKGROUND */}
+            {/* [LAYER 0] BACKGROUND MMORPG */}
+            {/* Background diletakkan paling belakang agar terlihat tembus pandang */}
             <div className="absolute inset-0 z-0">
                 <RPGBackground />
             </div>
@@ -140,15 +102,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             {isMobileOpen && (
                 <div
                     onClick={() => setIsMobileOpen(false)}
-                    className="absolute inset-0 z-40 bg-black/80 backdrop-blur-sm lg:hidden animate-in fade-in duration-300"
+                    className="absolute inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden animate-in fade-in duration-300"
                 />
             )}
 
-            {/* SIDEBAR */}
+            {/* --- SIDEBAR (TRANSPARAN) --- */}
             <aside
                 className={`
           fixed inset-y-0 left-0 z-50 
-          bg-black/80 border-r border-amber-900/30 backdrop-blur-xl 
+          /* UBAH DISINI: bg-black/30 agar transparan + backdrop-blur-xl */
+          bg-black/30 border-r border-amber-900/20 backdrop-blur-xl 
           transition-all duration-300 ease-in-out
           flex flex-col justify-between
           w-64 ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}
@@ -160,7 +123,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
                 <div>
                     {/* Logo Area */}
-                    <div className={`h-20 flex items-center px-6 border-b border-amber-900/30 ${!isDesktopOpen ? 'lg:justify-center' : 'justify-between'}`}>
+                    <div className={`h-20 flex items-center px-6 border-b border-amber-900/20 ${!isDesktopOpen ? 'lg:justify-center' : 'justify-between'}`}>
                         <div className="flex items-center gap-3 overflow-hidden whitespace-nowrap">
                             <div className="p-2 bg-gradient-to-br from-amber-600 to-amber-800 rounded-lg shadow-[0_0_15px_rgba(245,158,11,0.4)] shrink-0">
                                 <Sword className="text-white" size={20} />
@@ -185,7 +148,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   w-full flex items-center gap-3 px-3 py-4 rounded-xl transition-all duration-300 group relative overflow-hidden
                   ${!isDesktopOpen ? 'lg:justify-center' : ''}
                   ${activeTab === item.id
-                                    ? 'text-amber-100 bg-amber-950/40 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.1)]'
+                                    ? 'text-amber-100 bg-amber-900/40 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.1)]'
                                     : 'text-amber-500/60 hover:text-amber-300 hover:bg-amber-900/10'}
                 `}
                             >
@@ -200,7 +163,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 </div>
 
                 {/* Logout */}
-                <div className="p-4 border-t border-amber-900/30 bg-black/20 overflow-hidden">
+                <div className="p-4 border-t border-amber-900/20 bg-black/10 overflow-hidden">
                     <button
                         onClick={onLogout}
                         title={!isDesktopOpen ? "Logout Realm" : ""}
@@ -219,16 +182,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 </div>
             </aside>
 
-            {/* MAIN CONTENT */}
+            {/* --- MAIN CONTENT --- */}
             <main className="flex-1 flex flex-col relative z-10 h-full w-full min-w-0">
 
-                {/* HEADER HUD */}
-                <header className="h-20 bg-black/40 border-b border-amber-900/30 backdrop-blur-md flex items-center justify-between px-4 lg:px-8 relative z-20 shadow-lg">
+                {/* HEADER HUD (TRANSPARAN) */}
+                <header className="h-20 bg-black/10 border-b border-amber-900/20 backdrop-blur-md flex items-center justify-between px-4 lg:px-8 relative z-20 shadow-sm transition-all hover:bg-black/30">
 
                     <div className="flex items-center gap-4">
                         <button
                             onClick={toggleSidebar}
-                            className="p-2 rounded-lg bg-amber-900/20 text-amber-500 border border-amber-500/30 hover:bg-amber-900/40 transition-colors"
+                            className="p-2 rounded-lg bg-amber-900/10 text-amber-500 border border-amber-500/20 hover:bg-amber-900/30 transition-colors"
                         >
                             <div className="lg:hidden"><Menu size={24} /></div>
                             <div className="hidden lg:block">
@@ -250,106 +213,66 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     </div>
 
                     <div className="flex items-center gap-3 lg:gap-6">
-                        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 border border-amber-900/50 shadow-inner">
+                        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 border border-amber-900/30 shadow-inner">
                             <Gem size={14} className="text-purple-400" />
                             <span className="text-xs font-mono text-amber-100/80">2,400 GP</span>
                         </div>
 
-                        {/* --- NOTIFICATION BELL AREA --- */}
+                        {/* NOTIFIKASI BELL */}
                         <div className="relative" ref={notifRef}>
                             <button
                                 onClick={() => setIsNotifOpen(!isNotifOpen)}
                                 className={`
                    relative p-2 rounded-lg transition-colors
-                   ${isNotifOpen ? 'bg-amber-900/40 text-amber-400' : 'text-amber-500/60 hover:text-amber-400 hover:bg-amber-900/20'}
+                   ${isNotifOpen ? 'bg-amber-900/40 text-amber-400' : 'text-amber-500/60 hover:text-amber-400 hover:bg-amber-900/10'}
                 `}
                             >
                                 <Bell size={20} />
-                                {/* Red Dot Indicator (Logic: Show if there is unread notif) */}
                                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-ping shadow-[0_0_8px_#ef4444]"></span>
                                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
                             </button>
 
-                            {/* DROPDOWN NOTIFIKASI */}
+                            {/* DROPDOWN NOTIF */}
                             {isNotifOpen && (
-                                <div className="absolute right-0 top-full mt-3 w-80 md:w-96 bg-black/95 backdrop-blur-xl border border-amber-500/30 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] overflow-hidden z-[60] animate-in slide-in-from-top-2 fade-in duration-200">
-                                    {/* Dropdown Header */}
+                                <div className="absolute right-0 top-full mt-3 w-80 md:w-96 bg-black/90 backdrop-blur-xl border border-amber-500/30 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] overflow-hidden z-[60] animate-in slide-in-from-top-2 fade-in duration-200">
                                     <div className="p-4 border-b border-amber-900/30 flex items-center justify-between bg-amber-900/10">
                      <span className="text-xs font-bold text-amber-500 uppercase tracking-widest flex items-center gap-2">
                        <Bell size={12} /> Realm Alerts
                      </span>
-                                        <button className="text-[10px] text-amber-500/60 hover:text-amber-400 font-bold uppercase tracking-wider hover:underline">
-                                            Mark all read
-                                        </button>
                                     </div>
-
-                                    {/* List Notifikasi */}
                                     <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
                                         {DUMMY_NOTIFS.map((notif) => (
-                                            <div
-                                                key={notif.id}
-                                                className={`
-                           p-4 border-b border-amber-900/20 hover:bg-amber-900/10 transition-colors cursor-pointer group
-                           ${!notif.read ? 'bg-amber-900/5' : ''}
-                         `}
-                                            >
+                                            <div key={notif.id} className="p-4 border-b border-amber-900/20 hover:bg-amber-900/10 transition-colors cursor-pointer group">
                                                 <div className="flex gap-3">
-                                                    {/* Icon Box */}
-                                                    <div className={`
-                             mt-1 h-8 w-8 rounded-lg flex items-center justify-center border shrink-0
-                             ${!notif.read ? 'bg-amber-900/20 border-amber-500/30' : 'bg-black/40 border-amber-900/30'}
-                           `}>
+                                                    <div className="mt-1 h-8 w-8 rounded-lg flex items-center justify-center bg-black/40 border border-amber-900/30 shrink-0">
                                                         {getNotifIcon(notif.type)}
                                                     </div>
-
                                                     <div className="flex-1">
                                                         <div className="flex justify-between items-start mb-1">
-                                                            <h4 className={`text-xs font-bold ${!notif.read ? 'text-amber-100' : 'text-amber-500/60'}`}>
-                                                                {notif.title}
-                                                            </h4>
+                                                            <h4 className="text-xs font-bold text-amber-100">{notif.title}</h4>
                                                             <span className="text-[9px] text-amber-500/40 font-mono">{notif.time}</span>
                                                         </div>
-                                                        <p className="text-[10px] text-amber-500/70 leading-relaxed group-hover:text-amber-200/80 transition-colors">
-                                                            {notif.desc}
-                                                        </p>
+                                                        <p className="text-[10px] text-amber-500/70">{notif.desc}</p>
                                                     </div>
-
-                                                    {/* Unread Dot */}
-                                                    {!notif.read && (
-                                                        <div className="mt-2 h-1.5 w-1.5 rounded-full bg-amber-500 shadow-[0_0_5px_#f59e0b]"></div>
-                                                    )}
                                                 </div>
                                             </div>
                                         ))}
-                                    </div>
-
-                                    {/* Dropdown Footer */}
-                                    <div className="p-3 bg-black/40 border-t border-amber-900/30 text-center">
-                                        <button className="text-[10px] font-bold text-amber-500/50 hover:text-amber-400 uppercase tracking-widest transition-colors">
-                                            View All History
-                                        </button>
                                     </div>
                                 </div>
                             )}
                         </div>
 
-                        <div className="flex items-center gap-3 pl-2 lg:pl-4 lg:border-l border-amber-900/30">
+                        <div className="flex items-center gap-3 pl-2 lg:pl-4 lg:border-l border-amber-900/20">
                             <div className="text-right hidden md:block">
                                 <div className="text-xs font-bold text-amber-100">JufrinDev</div>
-                                <div className="text-[9px] font-bold text-amber-500 uppercase tracking-wider">Level 99 Leader</div>
+                                <div className="text-[9px] font-bold text-amber-500 uppercase tracking-wider">Lvl 99 Leader</div>
                             </div>
-                            <UserPhoto
-                                alt="Jufrin Dev"
-                                role="LEADER"
-                                size="md"
-                                src={null}
-                                className="cursor-pointer hover:scale-105 transition-transform"
-                            />
+                            <UserPhoto alt="Jufrin Dev" role="LEADER" size="md" src={null} className="cursor-pointer hover:scale-105 transition-transform"/>
                         </div>
                     </div>
                 </header>
 
-                {/* Content Body */}
+                {/* CONTENT BODY */}
                 <div className="flex-1 overflow-y-auto p-4 lg:p-6 custom-scrollbar relative z-10 w-full">
                     {children}
                 </div>
@@ -357,9 +280,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
             <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.3); }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #78350f; border-radius: 3px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #b45309; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.1); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(120, 53, 15, 0.5); border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(180, 83, 9, 0.8); }
       `}</style>
         </div>
     );
