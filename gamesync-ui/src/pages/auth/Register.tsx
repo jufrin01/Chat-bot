@@ -49,7 +49,7 @@ const Register: React.FC = () => {
             alert(`Hero ${formData.username} berhasil dipanggil! Silakan Login.`);
 
             // 3. Redirect ke halaman Login
-            navigate('/login');
+            window.location.href = '/login';
 
         } catch (err: any) {
             console.error("Registration Failed:", err);

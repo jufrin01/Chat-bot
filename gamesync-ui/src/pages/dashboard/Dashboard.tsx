@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SockJS from 'sockjs-client';
-// Menggunakan import * as untuk mengakses objek Stomp di dalam file lib
 import * as Stomp from 'stompjs/lib/stomp.js';
 
-import DashboardLayout from '../../layout/DashboardLayout';
+
+import DashboardLayout, { NotificationItem } from '../../layout/DashboardLayout';
 import ChatHeader from '../../components/ChatHeader';
 import ChatArea from '../../components/ChatArea';
 import ChatInput from '../../components/ChatInput';
@@ -27,6 +27,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     const [input, setInput] = useState<string>('');
     const [showWelcome, setShowWelcome] = useState(false);
 
+    // 1. TAMBAHKAN STATE NOTIFICATIONS
+    const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+
     const stompClientRef = useRef<any>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -34,59 +37,54 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     const userData = userString ? JSON.parse(userString) : null;
     const username = userData?.username || 'Adventurer';
 
-    // --- EFFECT 1: INITIAL LOAD (History & Welcome Logic) ---
     useEffect(() => {
-        console.log("=== DASHBOARD INITIALIZED ===");
-
-        // Cek sessionStorage agar Toast hanya muncul 1 kali per sesi
         const hasBeenWelcomed = sessionStorage.getItem('hasBeenWelcomed');
         if (!hasBeenWelcomed) {
             setShowWelcome(true);
             sessionStorage.setItem('hasBeenWelcomed', 'true');
         }
-
-        // Ambil history chat saat pertama kali masuk
         fetchChatHistory();
-    }, []); // Dependency array kosong agar hanya jalan sekali saat mount
+    }, []);
 
-    // --- EFFECT 2: FETCH HISTORY ON TAB CHANGE ---
     useEffect(() => {
         if (activeTab === 'chat') {
             fetchChatHistory();
         }
     }, [activeTab]);
 
-    // --- EFFECT 3: WEBSOCKET CONNECTION ---
+    // --- WEBSOCKET CONNECTION ---
     useEffect(() => {
         const socket = new SockJS('http://localhost:8080/ws');
         const stompClient = Stomp.Stomp.over(socket);
 
-        stompClient.debug = () => {}; // Mematikan log debug agar console bersih
+        stompClient.debug = () => {};
 
         stompClient.connect({}, (frame: any) => {
-            console.log('Connected to Realm Socket: ' + frame);
+            console.log('Connected to Realm Socket');
             stompClientRef.current = stompClient;
 
+            // Subscribe Chat
             stompClient.subscribe('/topic/public', (payload: any) => {
                 const newMessage = JSON.parse(payload.body);
-
                 setMessages((prev) => {
-                    // Cek duplikasi agar pesan tidak muncul dua kali
                     const isDuplicate = prev.some(m =>
-                        (m.timestamp === newMessage.timestamp && m.senderId === newMessage.senderId) ||
-                        (m.content === newMessage.content && m.senderId === newMessage.senderId)
+                        (m.timestamp === newMessage.timestamp && m.senderId === newMessage.senderId)
                     );
                     return isDuplicate ? prev : [...prev, newMessage];
                 });
             });
-        }, (error: any) => {
-            console.error("WebSocket connection error:", error);
-        });
+
+            // 2. SUBSCRIBE NOTIFICATIONS
+            stompClient.subscribe('/topic/notifications', (payload: any) => {
+                const newNotif = JSON.parse(payload.body);
+                // Tambahkan notifikasi baru ke paling atas
+                setNotifications((prev) => [newNotif, ...prev]);
+            });
+
+        }, (error: any) => console.error(error));
 
         return () => {
-            if (stompClientRef.current) {
-                stompClientRef.current.disconnect();
-            }
+            if (stompClientRef.current) stompClientRef.current.disconnect();
         };
     }, [userData?.id]);
 
@@ -94,14 +92,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         try {
             const response = await api.get('/chat/history');
             setMessages(response.data);
-        } catch (error: any) {
-            console.error("Failed to fetch history:", error);
+        } catch (error) {
+            console.error(error);
         }
     };
 
     const handleSend = async () => {
         if (!input.trim()) return;
-
         const chatPayload = {
             content: input,
             senderId: userData?.id,
@@ -110,13 +107,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             type: 'CHAT',
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
-
         try {
             const response = await api.post('/chat/send', chatPayload);
             setMessages((prev) => [...prev, response.data]);
             setInput('');
-        } catch (error: any) {
-            console.error("Failed to send message:", error);
+        } catch (error) {
+            console.error(error);
         }
     };
 
@@ -131,30 +127,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             case 'chat':
                 return (
                     <div className="flex flex-col h-[calc(100vh-12rem)] md:h-[calc(100vh-10rem)] bg-black/20 rounded-3xl border border-amber-900/20 backdrop-blur-sm overflow-hidden shadow-2xl">
-                        <ChatHeader
-                            title="General Tavern"
-                            subtitle="Realm Connection Established"
-                            type="CHANNEL"
-                            onlineCount={128}
-                        />
-
+                        <ChatHeader title="General Tavern" subtitle="Realm Connection Established" type="CHANNEL" onlineCount={128} />
                         <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6 custom-scrollbar relative z-10">
                             {messages.length === 0 ? (
-                                <div className="text-center text-amber-500/30 mt-20 italic">
-                                    The Tavern is quiet... No messages yet.
-                                </div>
+                                <div className="text-center text-amber-500/30 mt-20 italic">The Tavern is quiet...</div>
                             ) : (
                                 <ChatArea messages={messages} />
                             )}
                             <div ref={scrollRef} />
                         </div>
-
                         <footer className="w-full py-4 px-4 bg-black/20 backdrop-blur-xl border-t border-amber-900/10 relative z-20 flex justify-center items-center shadow-[0_-5px_20px_rgba(0,0,0,0.1)]">
-                            <ChatInput
-                                input={input}
-                                setInput={setInput}
-                                onSend={handleSend}
-                            />
+                            <ChatInput input={input} setInput={setInput} onSend={handleSend} />
                         </footer>
                     </div>
                 );
@@ -183,13 +166,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             setActiveTab={(tab) => setActiveTab(tab as any)}
             onLogout={onLogout}
             headerTitle={getHeaderTitle()}
+            notifications={notifications}
         >
-            {showWelcome && (
-                <WelcomeToast
-                    username={username}
-                    onClose={() => setShowWelcome(false)}
-                />
-            )}
+            {showWelcome && <WelcomeToast username={username} onClose={() => setShowWelcome(false)} />}
             {renderContent()}
         </DashboardLayout>
     );
