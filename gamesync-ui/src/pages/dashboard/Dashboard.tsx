@@ -23,28 +23,26 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     // --- STATE MANAGEMENT ---
     const [activeTab, setActiveTab] = useState<'chat' | 'schedule' | 'squads' | 'chronicles' | 'settings'>('chat');
 
-    // [SAFETY] Gunakan array kosong sebagai default untuk menghindari crash map null
+    // [SAFETY] Inisialisasi dengan array kosong []
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState<string>('');
     const [showWelcome, setShowWelcome] = useState(false);
 
-    // [SAFETY] Default array kosong
+    // [SAFETY] Inisialisasi dengan array kosong []
     const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
     const stompClientRef = useRef<any>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    // [SAFETY] Handle jika localStorage kosong/corrupt
     const userString = localStorage.getItem('user');
 
-    // --- [FIX] Tambahkan ': any' agar TypeScript tidak error saat akses .id atau .role ---
     let userData: any = null;
 
     try {
         userData = userString ? JSON.parse(userString) : null;
     } catch (e) {
         console.error("Error parsing user data", e);
-        localStorage.removeItem('user'); // Reset jika corrupt
+        localStorage.removeItem('user');
     }
 
     const username = userData?.username || 'Adventurer';
@@ -64,9 +62,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         }
     }, [activeTab]);
 
-    // --- WEBSOCKET CONNECTION (FIXED) ---
+    // --- WEBSOCKET CONNECTION (FIXED HTTPS & SECURITY) ---
     useEffect(() => {
-        // [FIX] Ambil URL dari Environment Variable
+
         const wsUrl = process.env.REACT_APP_WS_URL || 'http://localhost:8080/ws';
 
         console.log("Connecting to WebSocket:", wsUrl);
@@ -74,6 +72,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         const socket = new SockJS(wsUrl);
         const stompClient = Stomp.Stomp.over(socket);
 
+        // Matikan debug log di production agar console bersih
         if (process.env.NODE_ENV === 'production') {
             stompClient.debug = () => {};
         }
@@ -85,7 +84,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             // Subscribe Chat
             stompClient.subscribe('/topic/public', (payload: any) => {
                 const newMessage = JSON.parse(payload.body);
+
                 setMessages((prev) => {
+                    // Cek duplikasi (Defensive Programming)
                     const isDuplicate = prev?.some(m =>
                         (m.timestamp === newMessage.timestamp && m.senderId === newMessage.senderId)
                     );
@@ -111,6 +112,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     const fetchChatHistory = async () => {
         try {
             const response = await api.get('/chat/history');
+            // [SAFETY] Pastikan data yang diterima adalah Array
             if (Array.isArray(response.data)) {
                 setMessages(response.data);
             } else {
@@ -118,14 +120,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             }
         } catch (error) {
             console.error("Failed to fetch chat history:", error);
-            setMessages([]);
+            setMessages([]); // Fallback ke array kosong jika error
         }
     };
 
+    // --- SEND MESSAGE LOGIC (FIXED DOUBLE CHAT) ---
     const handleSend = async () => {
         if (!input.trim()) return;
 
-        // --- [FIX] userData?.id sekarang aman karena tipe 'any' ---
         const chatPayload = {
             content: input,
             senderId: userData?.id,
@@ -134,9 +136,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             type: 'CHAT',
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
+
         try {
-            const response = await api.post('/chat/send', chatPayload);
-            setMessages((prev) => [...(prev || []), response.data]);
+
+            await api.post('/chat/send', chatPayload);
             setInput('');
         } catch (error) {
             console.error("Failed to send message:", error);
@@ -156,6 +159,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                     <div className="flex flex-col h-[calc(100vh-12rem)] md:h-[calc(100vh-10rem)] bg-black/20 rounded-3xl border border-amber-900/20 backdrop-blur-sm overflow-hidden shadow-2xl">
                         <ChatHeader title="General Tavern" subtitle="Realm Connection Established" type="CHANNEL" onlineCount={128} />
                         <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6 custom-scrollbar relative z-10">
+                            {/* [SAFETY] Cek length array dengan aman */}
                             {(!messages || messages.length === 0) ? (
                                 <div className="text-center text-amber-500/30 mt-20 italic">The Tavern is quiet...</div>
                             ) : (
