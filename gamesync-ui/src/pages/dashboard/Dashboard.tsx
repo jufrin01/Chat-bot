@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import SockJS from 'sockjs-client';
 import * as Stomp from 'stompjs/lib/stomp.js';
 
-
 import DashboardLayout, { NotificationItem } from '../../layout/DashboardLayout';
 import ChatHeader from '../../components/ChatHeader';
 import ChatArea from '../../components/ChatArea';
@@ -23,18 +22,31 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     // --- STATE MANAGEMENT ---
     const [activeTab, setActiveTab] = useState<'chat' | 'schedule' | 'squads' | 'chronicles' | 'settings'>('chat');
+
+    // [SAFETY] Gunakan array kosong sebagai default untuk menghindari crash map null
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState<string>('');
     const [showWelcome, setShowWelcome] = useState(false);
 
-    // 1. TAMBAHKAN STATE NOTIFICATIONS
+    // [SAFETY] Default array kosong
     const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
     const stompClientRef = useRef<any>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
+    // [SAFETY] Handle jika localStorage kosong/corrupt
     const userString = localStorage.getItem('user');
-    const userData = userString ? JSON.parse(userString) : null;
+
+    // --- [FIX] Tambahkan ': any' agar TypeScript tidak error saat akses .id atau .role ---
+    let userData: any = null;
+
+    try {
+        userData = userString ? JSON.parse(userString) : null;
+    } catch (e) {
+        console.error("Error parsing user data", e);
+        localStorage.removeItem('user'); // Reset jika corrupt
+    }
+
     const username = userData?.username || 'Adventurer';
 
     useEffect(() => {
@@ -52,12 +64,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         }
     }, [activeTab]);
 
-    // --- WEBSOCKET CONNECTION ---
+    // --- WEBSOCKET CONNECTION (FIXED) ---
     useEffect(() => {
-        const socket = new SockJS('http://localhost:8080/ws');
+        // [FIX] Ambil URL dari Environment Variable
+        const wsUrl = process.env.REACT_APP_WS_URL || 'http://localhost:8080/ws';
+
+        console.log("Connecting to WebSocket:", wsUrl);
+
+        const socket = new SockJS(wsUrl);
         const stompClient = Stomp.Stomp.over(socket);
 
-        stompClient.debug = () => {};
+        if (process.env.NODE_ENV === 'production') {
+            stompClient.debug = () => {};
+        }
 
         stompClient.connect({}, (frame: any) => {
             console.log('Connected to Realm Socket');
@@ -67,21 +86,22 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             stompClient.subscribe('/topic/public', (payload: any) => {
                 const newMessage = JSON.parse(payload.body);
                 setMessages((prev) => {
-                    const isDuplicate = prev.some(m =>
+                    const isDuplicate = prev?.some(m =>
                         (m.timestamp === newMessage.timestamp && m.senderId === newMessage.senderId)
                     );
-                    return isDuplicate ? prev : [...prev, newMessage];
+                    return isDuplicate ? prev : [...(prev || []), newMessage];
                 });
             });
 
-            // 2. SUBSCRIBE NOTIFICATIONS
+            // Subscribe Notifications
             stompClient.subscribe('/topic/notifications', (payload: any) => {
                 const newNotif = JSON.parse(payload.body);
-                // Tambahkan notifikasi baru ke paling atas
-                setNotifications((prev) => [newNotif, ...prev]);
+                setNotifications((prev) => [newNotif, ...(prev || [])]);
             });
 
-        }, (error: any) => console.error(error));
+        }, (error: any) => {
+            console.error("WebSocket Error:", error);
+        });
 
         return () => {
             if (stompClientRef.current) stompClientRef.current.disconnect();
@@ -91,14 +111,21 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     const fetchChatHistory = async () => {
         try {
             const response = await api.get('/chat/history');
-            setMessages(response.data);
+            if (Array.isArray(response.data)) {
+                setMessages(response.data);
+            } else {
+                setMessages([]);
+            }
         } catch (error) {
-            console.error(error);
+            console.error("Failed to fetch chat history:", error);
+            setMessages([]);
         }
     };
 
     const handleSend = async () => {
         if (!input.trim()) return;
+
+        // --- [FIX] userData?.id sekarang aman karena tipe 'any' ---
         const chatPayload = {
             content: input,
             senderId: userData?.id,
@@ -109,10 +136,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         };
         try {
             const response = await api.post('/chat/send', chatPayload);
-            setMessages((prev) => [...prev, response.data]);
+            setMessages((prev) => [...(prev || []), response.data]);
             setInput('');
         } catch (error) {
-            console.error(error);
+            console.error("Failed to send message:", error);
         }
     };
 
@@ -129,7 +156,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                     <div className="flex flex-col h-[calc(100vh-12rem)] md:h-[calc(100vh-10rem)] bg-black/20 rounded-3xl border border-amber-900/20 backdrop-blur-sm overflow-hidden shadow-2xl">
                         <ChatHeader title="General Tavern" subtitle="Realm Connection Established" type="CHANNEL" onlineCount={128} />
                         <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6 custom-scrollbar relative z-10">
-                            {messages.length === 0 ? (
+                            {(!messages || messages.length === 0) ? (
                                 <div className="text-center text-amber-500/30 mt-20 italic">The Tavern is quiet...</div>
                             ) : (
                                 <ChatArea messages={messages} />
