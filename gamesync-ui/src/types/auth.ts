@@ -1,10 +1,11 @@
-
-
 export interface User {
     id?: number;
     username: string;
     email: string;
     role?: string;
+    level?: number;   // Tambahkan ini
+    guildId?: number; // Tambahkan ini
+    avatarUrl?: string;
 }
 
 /**
@@ -12,22 +13,21 @@ export interface User {
  */
 export interface AuthResponse {
     token: string;
-    type: string; // Biasanya "Bearer"
+    type: string;
     id: number;
     username: string;
     email: string;
-    roles: string[];
+    role: string;      // Update: Backend kirim String (bukan Array)
+    guildId?: number;  // Tambahkan ini
+    level?: number;    // Tambahkan ini (KUNCI UTAMA)
 }
 
 /**
- * Interface untuk Error Response (Jika login/register gagal)
+ * Interface untuk Error Response
  */
 export interface AuthError {
     message: string;
     status: number;
 }
 
-/**
- * Type untuk navigasi halaman (Sesuai AppRouter kita)
- */
 export type AuthPage = 'login' | 'register' | 'dashboard';

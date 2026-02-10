@@ -10,7 +10,7 @@ import {
     Shield
 } from 'lucide-react';
 import RPGBackground from '../../components/ui/RPGBackground';
-import api from '../../api/axios'; // Pastikan path ini sesuai dengan file axios.ts kamu
+import api from '../../api/axios';
 
 const Login: React.FC = () => {
     const navigate = useNavigate();
@@ -27,9 +27,7 @@ const Login: React.FC = () => {
         setIsLoading(true);
         setError(null);
 
-        // [LOG 1] Cek apakah data input sudah benar sebelum dikirim
         console.log("=== ATTEMPTING LOGIN ===");
-        console.log("Payload to Backend:", { username, password });
 
         try {
             // 1. Tembak API Backend
@@ -38,46 +36,37 @@ const Login: React.FC = () => {
                 password: password
             });
 
-            // [LOG 2] Cek apakah Backend membalas dan apa isinya
             console.log("Login Response Success:", response.data);
 
-            const { token, id, username: dbUsername, role, guildId } = response.data;
+            const { token, id, username: dbUsername, role, guildId, level } = response.data;
 
-            // 3. Simpan ke LocalStorage
+            // 3. Simpan ke LocalStorage (TERMASUK LEVEL)
             localStorage.setItem('token', token);
             localStorage.setItem('user', JSON.stringify({
                 id,
                 username: dbUsername,
                 role,
-                guildId
+                guildId,
+                level: level || 1 // <--- TAMBAHKAN INI (Default 1 jika null)
             }));
+            // ----------------------------------
 
-            console.log("Data saved to LocalStorage. Redirecting...");
+            console.log("Data saved to LocalStorage (Level included). Redirecting...");
 
             // 4. Redirect
             window.location.href = '/dashboard';
 
         } catch (err: any) {
-            // [LOG 3] Jika gagal, cek errornya di mana (CORS, 401, atau Server Mati)
             console.error("=== LOGIN ERROR ===");
-
             if (err.response) {
-                // Server merespon tapi dengan status error (400, 401, 500)
-                console.error("Status Code:", err.response.status);
-                console.error("Error Data from Backend:", err.response.data);
                 setError(err.response.data.message || "Authentication failed.");
             } else if (err.request) {
-                // Request terkirim tapi tidak ada respon (Server mati)
-                console.error("No response from server. Check if Backend is running.");
                 setError("Server is offline.");
             } else {
-                // Error lainnya (settingan axios, dll)
-                console.error("Setup Error:", err.message);
                 setError("Application Error.");
             }
         } finally {
             setIsLoading(false);
-            console.log("=== LOGIN PROCESS FINISHED ===");
         }
     };
 

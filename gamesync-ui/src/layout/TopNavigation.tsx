@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import UserPhoto from '../components/ui/UserPhoto';
 import { NotificationItem } from './DashboardLayout';
+import { User } from '../types/auth';
 
 interface TopNavigationProps {
     toggleSidebar: () => void;
@@ -22,14 +23,56 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
     const [isNotifOpen, setIsNotifOpen] = useState(false);
     const notifRef = useRef<HTMLDivElement>(null);
 
-    // --- AMBIL DATA USER ---
-    const userString = localStorage.getItem('user');
-    const userData = userString ? JSON.parse(userString) : null;
-    const username = userData?.username || 'Adventurer';
-    const userRole = userData?.role || 'USER';
-    const userLevel = userData?.level || 1;
+    // --- STATE USER DATA (Reaktif) ---
+    // Default level 1 jika belum ada data
+    const [userInfo, setUserInfo] = useState<User>({
+        username: 'Adventurer',
+        email: '',
+        role: 'USER',
+        level: 1,
+        avatarUrl: ''
+    });
 
-    // --- CLICK OUTSIDE HANDLER (Untuk Dropdown Notifikasi) ---
+    // --- EFFECT: MONITOR PERUBAHAN DATA USER ---
+    useEffect(() => {
+        const loadUserData = () => {
+            try {
+                const userString = localStorage.getItem('user');
+
+                if (userString) {
+                    const userData = JSON.parse(userString);
+
+                    // Update State dengan data dari LocalStorage
+                    setUserInfo({
+                        username: userData.username || 'Adventurer',
+                        email: userData.email || '',
+                        role: userData.role || 'USER',
+                        level: userData.level || 1, // <-- Baca Level di sini
+                        guildId: userData.guildId,
+                        avatarUrl: userData.avatarUrl || ''
+                    });
+                }
+            } catch (e) {
+                console.error("Failed to parse user data", e);
+            }
+        };
+
+        // 1. Load data saat pertama kali komponen muncul
+        loadUserData();
+
+        // 2. Event Listener untuk perubahan dari Tab lain
+        window.addEventListener('storage', loadUserData);
+
+        // 3. Interval Check (Opsional: Memastikan sync jika update terjadi di tab yang sama)
+        const intervalId = setInterval(loadUserData, 2000);
+
+        return () => {
+            window.removeEventListener('storage', loadUserData);
+            clearInterval(intervalId);
+        };
+    }, []);
+
+    // --- CLICK OUTSIDE HANDLER ---
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
@@ -120,10 +163,18 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
                 {/* User Profile */}
                 <div className="flex items-center gap-3 pl-2 lg:pl-4 lg:border-l border-amber-900/20">
                     <div className="text-right hidden md:block">
-                        <div className="text-xs font-bold text-amber-100">{username}</div>
-                        <div className="text-[9px] font-bold text-amber-500 uppercase tracking-wider">Lvl {userLevel} {userRole}</div>
+                        <div className="text-xs font-bold text-amber-100">{userInfo.username}</div>
+                        <div className="text-[9px] font-bold text-amber-500 uppercase tracking-wider">
+                            Lvl {userInfo.level} {userInfo.role}
+                        </div>
                     </div>
-                    <UserPhoto alt={username} role={userRole as any} size="md" src={null} />
+                    {/* Menggunakan Role yang sudah dimapping/diambil dari State */}
+                    <UserPhoto
+                        alt={userInfo.username}
+                        role={userInfo.role as any}
+                        size="md"
+                        src={userInfo.avatarUrl || null}
+                    />
                 </div>
             </div>
         </header>
