@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Users, Sword, Edit2, Trash2, Timer } from 'lucide-react';
+import { Calendar, Sword, Trash2, Timer } from 'lucide-react';
 
 interface QuestItemProps {
     quest: any;
