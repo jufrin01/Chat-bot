@@ -16,7 +16,6 @@ import ActionToast from '../../components/ui/ActionToast';
 import api from '../../api/axios';
 
 // --- DEFINISI TIPE DATA ---
-// Sesuaikan dengan response dari Backend (User.java)
 interface UserProfile {
     id: number | null;
     username: string;
@@ -28,15 +27,20 @@ interface UserProfile {
     notifications: boolean;
 }
 
-const Settings: React.FC = () => {
-    // --- STATE MANAGEMENT ---
-    const [isLoading, setIsLoading] = useState(false); // Loading saat Save
-    const [isFetching, setIsFetching] = useState(true); // Loading saat ambil data awal
+// [FIX 1] Definisikan Pintu Gerbang (Props) agar Dashboard bisa kirim data
+interface SettingsProps {
+    userData: any;
+    onProfileUpdate: (newData: any) => void;
+}
 
-    // State untuk Toast Notifikasi
+// [FIX 2] Pasang Props di sini: ({ userData, onProfileUpdate })
+const Settings: React.FC<SettingsProps> = ({ userData, onProfileUpdate }) => {
+
+    // --- STATE MANAGEMENT ---
+    const [isLoading, setIsLoading] = useState(false);
+    const [isFetching, setIsFetching] = useState(true);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-    // State Form Data
     const [formData, setFormData] = useState<UserProfile>({
         id: null,
         username: '',
@@ -50,13 +54,25 @@ const Settings: React.FC = () => {
 
     // --- EFFECT: LOAD PROFILE ---
     useEffect(() => {
+        // Gunakan data dari Dashboard untuk tampilan awal instan
+        if (userData) {
+            setFormData(prev => ({
+                ...prev,
+                id: userData.id,
+                username: userData.username,
+                email: userData.email,
+                role: userData.role,
+                avatarUrl: userData.avatarUrl || '',
+            }));
+        }
+
+        // Tetap fetch ke API untuk memastikan data paling update
         fetchUserProfile();
     }, []);
 
     const fetchUserProfile = async () => {
         try {
             setIsFetching(true);
-            // Panggil endpoint /users/me (Pastikan UserController sudah dibuat)
             const response = await api.get('/users/me');
 
             setFormData({
@@ -67,11 +83,11 @@ const Settings: React.FC = () => {
                 level: response.data.level || 1,
                 avatarUrl: response.data.avatarUrl || '',
                 bio: response.data.bio || '',
-                notifications: true // Default (bisa diambil dari DB jika ada kolomnya)
+                notifications: true
             });
         } catch (error: any) {
             console.error("Failed to fetch profile:", error);
-            setToast({ message: "Failed to load adventurer data.", type: 'error' });
+            // Tidak perlu error toast heboh, karena sudah ada data cache dari Dashboard
         } finally {
             setIsFetching(false);
         }
@@ -83,39 +99,44 @@ const Settings: React.FC = () => {
 
         setIsLoading(true);
 
-        // Payload yang dikirim ke Backend (sesuai UpdateProfileRequest)
         const payload = {
             username: formData.username,
             avatarUrl: formData.avatarUrl,
             bio: formData.bio
-            // Email sengaja tidak dikirim agar tidak diubah sembarangan
         };
 
         try {
-            await api.put(`/users/${formData.id}`, payload);
+            // 1. Kirim Update ke Backend
+            const response = await api.put(`/users/${formData.id}`, payload);
 
-            // Update localStorage agar Header Dashboard langsung berubah namanya
-            const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-            localStorage.setItem('user', JSON.stringify({
-                ...currentUser,
+            // [FIX 3 - KUNCI SEAMLESS UPDATE]
+            // Jangan simpan ke localStorage sendiri.
+            // Panggil fungsi 'onProfileUpdate' milik Dashboard.
+
+            const updatedData = {
+                ...userData, // Data lama
+                ...response.data, // Data baru dari server
+                // Pastikan UI terupdate manual jika server tidak kirim balik semua field
                 username: formData.username,
                 avatarUrl: formData.avatarUrl
-            }));
+            };
 
-            // Tampilkan Toast Sukses
-            setToast({ message: "Character Profile Updated in the Records!", type: 'success' });
+            // "Halo Dashboard, ini data baru. Tolong update tampilan!"
+            onProfileUpdate(updatedData);
+
+            setToast({ message: "Character Profile Updated Successfully!", type: 'success' });
 
         } catch (error: any) {
             console.error("Update Failed:", error);
-            const errorMsg = error.response?.data || "Magic failed! Server rejected the changes.";
+            const errorMsg = error.response?.data || "Server rejected the changes.";
             setToast({ message: typeof errorMsg === 'string' ? errorMsg : "Update failed", type: 'error' });
         } finally {
             setIsLoading(false);
         }
     };
 
-    // --- RENDER LOADING STATE (SAAT AWAL BUKA) ---
-    if (isFetching) {
+    // --- RENDER LOADING (Hanya jika tidak ada data sama sekali) ---
+    if (isFetching && !formData.id) {
         return (
             <div className="flex flex-col items-center justify-center h-64 text-amber-500 animate-pulse">
                 <RefreshCw className="animate-spin mb-4" size={32} />
@@ -127,7 +148,6 @@ const Settings: React.FC = () => {
     return (
         <div className="max-w-4xl mx-auto space-y-8 pb-10 animate-in fade-in duration-500 font-sans text-amber-50">
 
-            {/* --- ACTION TOAST (NOTIFIKASI) --- */}
             {toast && (
                 <ActionToast
                     message={toast.message}
@@ -136,7 +156,7 @@ const Settings: React.FC = () => {
                 />
             )}
 
-            {/* --- 1. HERO HEADER --- */}
+            {/* --- HERO HEADER --- */}
             <div className="relative p-6 md:p-8 rounded-3xl bg-black/40 backdrop-blur-xl border border-amber-500/20 shadow-[0_0_30px_rgba(0,0,0,0.5)] overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-amber-600/10 blur-[100px] rounded-full pointer-events-none"></div>
 
@@ -178,10 +198,10 @@ const Settings: React.FC = () => {
                 </div>
             </div>
 
-            {/* --- 2. FORM SETTINGS --- */}
+            {/* --- FORM SETTINGS --- */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                {/* COLUMN LEFT: Attributes */}
+                {/* COLUMN LEFT */}
                 <div className="space-y-6">
                     <div className="p-6 rounded-2xl bg-black/40 border border-amber-900/30 backdrop-blur-md hover:border-amber-500/30 transition-all">
                         <div className="flex items-center gap-2 mb-6 border-b border-amber-900/20 pb-2">
@@ -190,7 +210,6 @@ const Settings: React.FC = () => {
                         </div>
 
                         <div className="space-y-4">
-                            {/* Input Username */}
                             <div className="space-y-1.5 group">
                                 <label className="text-[10px] font-bold uppercase text-amber-500/60 ml-1">Hero Name</label>
                                 <div className="relative">
@@ -204,7 +223,6 @@ const Settings: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Input Bio */}
                             <div className="space-y-1.5 group">
                                 <label className="text-[10px] font-bold uppercase text-amber-500/60 ml-1">Legendary Feats (Bio)</label>
                                 <textarea
@@ -219,7 +237,7 @@ const Settings: React.FC = () => {
                     </div>
                 </div>
 
-                {/* COLUMN RIGHT: System & Credentials */}
+                {/* COLUMN RIGHT */}
                 <div className="space-y-6">
                     <div className="p-6 rounded-2xl bg-black/40 border border-amber-900/30 backdrop-blur-md hover:border-amber-500/30 transition-all">
                         <div className="flex items-center gap-2 mb-6 border-b border-amber-900/20 pb-2">
@@ -228,7 +246,6 @@ const Settings: React.FC = () => {
                         </div>
 
                         <div className="space-y-4">
-                            {/* Input Email (Read Only) */}
                             <div className="space-y-1.5 group">
                                 <label className="text-[10px] font-bold uppercase text-amber-500/60 ml-1">Owl Mail (Email)</label>
                                 <div className="relative">
@@ -271,7 +288,7 @@ const Settings: React.FC = () => {
                 </div>
             </div>
 
-            {/* --- 3. ACTION BUTTONS --- */}
+            {/* --- ACTION BUTTONS --- */}
             <div className="flex flex-col md:flex-row items-center justify-end gap-4 pt-4 border-t border-amber-900/30">
                 <button
                     onClick={handleSave}
@@ -298,7 +315,6 @@ const Settings: React.FC = () => {
     );
 };
 
-// Sub-komponen Toggle sederhana
 const Toggle = ({ active, onClick }: { active: boolean, onClick: () => void }) => (
     <div
         onClick={onClick}
