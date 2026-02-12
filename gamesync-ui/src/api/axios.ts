@@ -2,7 +2,7 @@ import axios, { InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'ax
 
 // 1. Ambil Base URL dari Environment Variable (.env)
 // Jika tidak ada di .env, otomatis pakai localhost:8080
-const baseURL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api';
+const baseURL = process.env.REACT_APP_API_BASE_URL;
 
 // 2. Buat Instance Axios
 const api = axios.create({

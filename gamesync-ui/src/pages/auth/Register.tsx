@@ -39,8 +39,6 @@ const Register: React.FC = () => {
                 username: formData.username,
                 email: formData.email,
                 password: formData.password
-                // Note: Role dikirim tapi di backend logic saat ini default-nya "USER"
-                // Jika ingin role dinamis, logic AuthService di backend perlu disesuaikan.
             });
 
             console.log('Registration Success:', response.data);

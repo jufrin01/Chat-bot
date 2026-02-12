@@ -23,7 +23,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     // --- STATE MANAGEMENT ---
     const [activeTab, setActiveTab] = useState<'chat' | 'schedule' | 'squads' | 'chronicles' | 'settings'>('chat');
 
-    // [FIX SEAMLESS UPDATE 1] Gunakan State untuk UserData agar UI re-aktif saat update profile
     const [userData, setUserData] = useState<any>(() => {
         try {
             const saved = localStorage.getItem('user');
@@ -45,14 +44,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
     const username = userData?.username || 'Adventurer';
 
-    // [FIX SEAMLESS UPDATE 2] Fungsi Sakti: Update data user & token tanpa logout
     const handleProfileUpdate = (updatedData: any) => {
-        // 1. Update State Dashboard (Nama di pojok kanan langsung berubah)
         setUserData(updatedData);
-
-        // 2. Update LocalStorage (Agar token baru tersimpan untuk request berikutnya)
         localStorage.setItem('user', JSON.stringify(updatedData));
-
         console.log("Profile updated successfully in Dashboard state");
     };
 
@@ -71,10 +65,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         }
     }, [activeTab]);
 
-    // --- WEBSOCKET CONNECTION ---
+
     useEffect(() => {
-        const wsUrl = process.env.REACT_APP_WS_URL || 'http://localhost:8080/ws';
+
+        const host = window.location.hostname;
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = process.env.REACT_APP_WS_URL || `http://${host}/ws`;
+
         console.log("Connecting to WebSocket:", wsUrl);
+
 
         const socket = new SockJS(wsUrl);
         const stompClient = Stomp.Stomp.over(socket);
@@ -109,7 +108,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         return () => {
             if (stompClientRef.current) stompClientRef.current.disconnect();
         };
-    }, [userData?.id]); // Re-connect jika ID berubah (sangat jarang, tapi aman)
+    }, [userData?.id]);
 
     const fetchChatHistory = async () => {
         try {
@@ -139,7 +138,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
         try {
             await api.post('/chat/send', chatPayload);
-            // Jangan setMessages disini, tunggu WebSocket broadcast agar tidak double chat
             setInput('');
         } catch (error) {
             console.error("Failed to send message:", error);
@@ -174,19 +172,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             case 'schedule': return <Schedule />;
             case 'squads': return <Squads />;
             case 'chronicles': return <Chronicles />;
-
-            // [FIX SEAMLESS UPDATE 3] Kirim props userData & onProfileUpdate ke Settings
-            // Pastikan kamu update file Settings.tsx juga untuk menerima props ini!
             case 'settings':
                 return (
                     <Settings
                         userData={userData}
                         onProfileUpdate={handleProfileUpdate}
-                        // Jika Settings butuh onLogout, kirim juga:
-                        // onLogout={onLogout}
                     />
                 );
-
             default: return null;
         }
     };
@@ -209,8 +201,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             onLogout={onLogout}
             headerTitle={getHeaderTitle()}
             notifications={notifications}
-            // Kirim userData ke Layout jika Layout menampilkan nama user di navbar
-            // userData={userData}
         >
             {showWelcome && <WelcomeToast username={username} onClose={() => setShowWelcome(false)} />}
             {renderContent()}

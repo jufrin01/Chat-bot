@@ -37,9 +37,11 @@ const Schedule: React.FC = () => {
         try {
             setIsLoading(true);
             const response = await api.get('/quests');
-            setQuests(response.data);
+
+            setQuests(Array.isArray(response.data) ? response.data : []);
         } catch (error) {
             console.error("Failed to fetch quests:", error);
+            setQuests([]);
         } finally {
             setIsLoading(false);
         }
