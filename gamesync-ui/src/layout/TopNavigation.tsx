@@ -5,6 +5,7 @@ import {
 import UserPhoto from '../components/ui/UserPhoto';
 import { NotificationItem } from './DashboardLayout';
 import { User } from '../types/auth';
+import api from '../api/axios';
 
 interface TopNavigationProps {
     toggleSidebar: () => void;
@@ -19,12 +20,10 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
                                                          headerTitle,
                                                          notifications
                                                      }) => {
-    // --- STATE INTERNAL HEADER ---
     const [isNotifOpen, setIsNotifOpen] = useState(false);
     const notifRef = useRef<HTMLDivElement>(null);
 
-    // --- STATE USER DATA (Reaktif) ---
-    // Default level 1 jika belum ada data
+    // State awal default
     const [userInfo, setUserInfo] = useState<User>({
         username: 'Adventurer',
         email: '',
@@ -33,41 +32,46 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
         avatarUrl: ''
     });
 
-    // --- EFFECT: MONITOR PERUBAHAN DATA USER ---
-    useEffect(() => {
-        const loadUserData = () => {
-            try {
-                const userString = localStorage.getItem('user');
+    const refreshUserData = async () => {
+        try {
+            const response = await api.get('/users/me');
+            const freshData = response.data;
 
-                if (userString) {
-                    const userData = JSON.parse(userString);
+            // Update state dengan data terbaru (Role ADMIN akan muncul di sini)
+            setUserInfo({
+                username: freshData.username || 'Adventurer',
+                email: freshData.email || '',
+                role: freshData.role || 'USER',
+                level: freshData.level || 1,
+                guildId: freshData.guildId,
+                avatarUrl: freshData.avatarUrl || ''
+            });
 
-                    // Update State dengan data dari LocalStorage
-                    setUserInfo({
-                        username: userData.username || 'Adventurer',
-                        email: userData.email || '',
-                        role: userData.role || 'USER',
-                        level: userData.level || 1, // <-- Baca Level di sini
-                        guildId: userData.guildId,
-                        avatarUrl: userData.avatarUrl || ''
-                    });
-                }
-            } catch (e) {
-                console.error("Failed to parse user data", e);
+            // Sinkronkan ke localStorage agar bagian lain aplikasi ikut update
+            localStorage.setItem('user', JSON.stringify(freshData));
+        } catch (error) {
+            console.error("Failed to sync user data from server:", error);
+
+            // Fallback: Jika server error, tetap gunakan localStorage yang ada
+            const savedUser = localStorage.getItem('user');
+            if (savedUser) {
+                setUserInfo(JSON.parse(savedUser));
             }
-        };
+        }
+    };
 
-        // 1. Load data saat pertama kali komponen muncul
-        loadUserData();
+    useEffect(() => {
+        // 1. Ambil data saat komponen pertama kali mount
+        refreshUserData();
 
-        // 2. Event Listener untuk perubahan dari Tab lain
-        window.addEventListener('storage', loadUserData);
+        // 2. Event listener jika ada perubahan storage dari tab lain
+        window.addEventListener('storage', refreshUserData);
 
-        // 3. Interval Check (Opsional: Memastikan sync jika update terjadi di tab yang sama)
-        const intervalId = setInterval(loadUserData, 2000);
+        // 3. Polling: Cek setiap 10 detik agar Role ADMIN update otomatis jika diubah via DB
+        const intervalId = setInterval(refreshUserData, 10000);
 
         return () => {
-            window.removeEventListener('storage', loadUserData);
+            window.removeEventListener('storage', refreshUserData);
             clearInterval(intervalId);
         };
     }, []);
@@ -94,7 +98,6 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
 
     return (
         <header className="h-20 bg-black/10 border-b border-amber-900/20 backdrop-blur-md flex items-center justify-between px-4 lg:px-8 relative z-20">
-            {/* Left Section: Toggle & Title */}
             <div className="flex items-center gap-4">
                 <button onClick={toggleSidebar} className="p-2 rounded-lg bg-amber-900/10 text-amber-500 border border-amber-500/20">
                     <div className="lg:hidden"><Menu size={24} /></div>
@@ -109,15 +112,12 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
                 </div>
             </div>
 
-            {/* Right Section: Stats, Notif, Profile */}
             <div className="flex items-center gap-3 lg:gap-6">
-                {/* Gem Counter */}
                 <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 border border-amber-900/30">
                     <Gem size={14} className="text-purple-400" />
                     <span className="text-xs font-mono text-amber-100/80">2,400 GP</span>
                 </div>
 
-                {/* Notification Dropdown */}
                 <div className="relative" ref={notifRef}>
                     <button onClick={() => setIsNotifOpen(!isNotifOpen)} className={`relative p-2 rounded-lg ${isNotifOpen ? 'bg-amber-900/40 text-amber-400' : 'text-amber-500/60'}`}>
                         <Bell size={20} />
@@ -160,7 +160,6 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
                     )}
                 </div>
 
-                {/* User Profile */}
                 <div className="flex items-center gap-3 pl-2 lg:pl-4 lg:border-l border-amber-900/20">
                     <div className="text-right hidden md:block">
                         <div className="text-xs font-bold text-amber-100">{userInfo.username}</div>
@@ -168,7 +167,6 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
                             Lvl {userInfo.level} {userInfo.role}
                         </div>
                     </div>
-                    {/* Menggunakan Role yang sudah dimapping/diambil dari State */}
                     <UserPhoto
                         alt={userInfo.username}
                         role={userInfo.role as any}

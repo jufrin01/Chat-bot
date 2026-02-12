@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SockJS from 'sockjs-client';
-import * as Stomp from 'stompjs/lib/stomp.js';
+import { Stomp } from '@stomp/stompjs';
 
 import DashboardLayout, { NotificationItem } from '../../layout/DashboardLayout';
 import ChatHeader from '../../components/ChatHeader';
@@ -44,40 +44,27 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
     const username = userData?.username || 'Adventurer';
 
-    const handleProfileUpdate = (updatedData: any) => {
-        setUserData(updatedData);
-        localStorage.setItem('user', JSON.stringify(updatedData));
-        console.log("Profile updated successfully in Dashboard state");
-    };
-
+    // --- 1. INITIAL LOAD & HISTORY ---
     useEffect(() => {
         const hasBeenWelcomed = sessionStorage.getItem('hasBeenWelcomed');
         if (!hasBeenWelcomed) {
             setShowWelcome(true);
             sessionStorage.setItem('hasBeenWelcomed', 'true');
         }
+
+        // Ambil history chat saat pertama kali buka
         fetchChatHistory();
     }, []);
 
+    // --- 2. WEBSOCKET CONNECTION (REAL-TIME) ---
     useEffect(() => {
-        if (activeTab === 'chat') {
-            fetchChatHistory();
-        }
-    }, [activeTab]);
+        // Tentukan URL WebSocket (Sesuaikan dengan IP VPS kamu)
+        const socketUrl = `${window.location.origin}/ws`; // Otomatis ikut domain/IP browser
 
+        const socket = new SockJS(socketUrl);
+        const stompClient = Stomp.over(socket);
 
-    useEffect(() => {
-
-        const host = window.location.hostname;
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = process.env.REACT_APP_WS_URL || `http://${host}/ws`;
-
-        console.log("Connecting to WebSocket:", wsUrl);
-
-
-        const socket = new SockJS(wsUrl);
-        const stompClient = Stomp.Stomp.over(socket);
-
+        // Matikan debug log di production agar console bersih
         if (process.env.NODE_ENV === 'production') {
             stompClient.debug = () => {};
         }
@@ -86,16 +73,20 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             console.log('Connected to Realm Socket');
             stompClientRef.current = stompClient;
 
+            // Subscribe ke Chat Global
             stompClient.subscribe('/topic/public', (payload: any) => {
                 const newMessage = JSON.parse(payload.body);
-                setMessages((prev) => {
-                    const isDuplicate = prev?.some(m =>
-                        (m.timestamp === newMessage.timestamp && m.senderId === newMessage.senderId)
-                    );
-                    return isDuplicate ? prev : [...(prev || []), newMessage];
-                });
+
+                // Tambahkan pesan baru ke state (langsung muncul tanpa refresh)
+                setMessages((prev) => [...prev, newMessage]);
+
+                // Auto scroll ke bawah
+                if (scrollRef.current) {
+                    scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+                }
             });
 
+            // Subscribe ke Notifikasi
             stompClient.subscribe('/topic/notifications', (payload: any) => {
                 const newNotif = JSON.parse(payload.body);
                 setNotifications((prev) => [newNotif, ...(prev || [])]);
@@ -108,7 +99,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         return () => {
             if (stompClientRef.current) stompClientRef.current.disconnect();
         };
-    }, [userData?.id]);
+    }, []);
 
     const fetchChatHistory = async () => {
         try {
@@ -125,18 +116,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     };
 
     const handleSend = async () => {
-        if (!input.trim()) return;
+        if (!input.trim() || !userData) return;
 
         const chatPayload = {
+            senderId: userData.id,
             content: input,
-            senderId: userData?.id,
-            senderName: username,
-            senderRole: userData?.role || 'USER',
-            type: 'CHAT',
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            messageType: 'CHAT',
+            guildId: null
         };
 
         try {
+            // Kirim ke endpoint REST, nanti backend yang broadcast via WebSocket
             await api.post('/chat/send', chatPayload);
             setInput('');
         } catch (error) {
@@ -144,29 +134,73 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         }
     };
 
+    // Auto-scroll saat pesan bertambah atau tab berubah
     useEffect(() => {
         if (activeTab === 'chat' && scrollRef.current) {
             scrollRef.current.scrollIntoView({ behavior: 'smooth' });
         }
     }, [messages, activeTab]);
 
+    const handleProfileUpdate = (updatedData: any) => {
+        setUserData(updatedData);
+        localStorage.setItem('user', JSON.stringify(updatedData));
+    };
+
+    // --- RENDER CONTENT BASED ON TAB ---
     const renderContent = () => {
         switch (activeTab) {
             case 'chat':
                 return (
-                    <div className="flex flex-col h-[calc(100vh-12rem)] md:h-[calc(100vh-10rem)] bg-black/20 rounded-3xl border border-amber-900/20 backdrop-blur-sm overflow-hidden shadow-2xl">
-                        <ChatHeader title="General Tavern" subtitle="Realm Connection Established" type="CHANNEL" onlineCount={128} />
-                        <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6 custom-scrollbar relative z-10">
+                    <div className="flex flex-col h-[calc(100vh-8rem)] md:h-[calc(100vh-6rem)] bg-black/20 rounded-3xl border border-amber-900/20 backdrop-blur-sm overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-300">
+                        {/* Header Chat */}
+                        <div className="p-4 border-b border-amber-900/20 bg-black/40 flex justify-between items-center">
+                            <div>
+                                <h2 className="text-amber-100 font-bold font-rpg tracking-wider uppercase">General Tavern</h2>
+                                <p className="text-[10px] text-emerald-500 font-mono flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    Live Connection
+                                </p>
+                            </div>
+                            <div className="text-xs text-amber-500/50 font-mono">
+                                Heroes Online: 128
+                            </div>
+                        </div>
+
+                        {/* Area Chat */}
+                        <div className="flex-1 overflow-y-auto p-4 lg:p-6 custom-scrollbar relative">
                             {(!messages || messages.length === 0) ? (
-                                <div className="text-center text-amber-500/30 mt-20 italic">The Tavern is quiet...</div>
+                                <div className="flex flex-col items-center justify-center h-full text-amber-500/30 italic space-y-2">
+                                    <div className="w-12 h-12 rounded-full bg-amber-900/10 flex items-center justify-center">
+                                        <span className="text-2xl">📜</span>
+                                    </div>
+                                    <p>The Tavern is quiet...</p>
+                                </div>
                             ) : (
                                 <ChatArea messages={messages} />
                             )}
                             <div ref={scrollRef} />
                         </div>
-                        <footer className="w-full py-4 px-4 bg-black/20 backdrop-blur-xl border-t border-amber-900/10 relative z-20 flex justify-center items-center shadow-[0_-5px_20px_rgba(0,0,0,0.1)]">
-                            <ChatInput input={input} setInput={setInput} onSend={handleSend} />
-                        </footer>
+
+                        {/* Input Area */}
+                        <div className="p-4 bg-black/40 border-t border-amber-900/20 backdrop-blur-md">
+                            <div className="relative flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    value={input}
+                                    onChange={(e) => setInput(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                                    placeholder="Type your message, Hero..."
+                                    className="w-full bg-black/40 border border-amber-900/30 rounded-xl py-3 pl-4 pr-12 text-amber-100 placeholder:text-amber-900/50 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 focus:outline-none transition-all"
+                                />
+                                <button
+                                    onClick={handleSend}
+                                    disabled={!input.trim()}
+                                    className="absolute right-2 p-2 bg-amber-600/20 text-amber-500 rounded-lg hover:bg-amber-600 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    ➤
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 );
             case 'schedule': return <Schedule />;

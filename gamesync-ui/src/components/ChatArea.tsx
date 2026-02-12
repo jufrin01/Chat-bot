@@ -1,7 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { CheckCheck, Sparkles } from 'lucide-react';
-import { Message } from '../types/chat'; // Pastikan path ini sesuai
-import UserPhoto from '../components/ui/UserPhoto';   // Pastikan path ini sesuai
+import { Message } from '../types/chat';
+import UserPhoto from '../components/ui/UserPhoto';
 
 interface ChatAreaProps {
     messages: Message[];
@@ -10,14 +10,20 @@ interface ChatAreaProps {
 const ChatArea: React.FC<ChatAreaProps> = ({ messages }) => {
     const bottomRef = useRef<HTMLDivElement>(null);
 
-    // --- 1. AUTO SCROLL ---
+    // Mengambil data user lokal untuk menentukan mana pesan milik sendiri
+    const userData = useMemo(() => {
+        const localUser = localStorage.getItem('user');
+        return localUser ? JSON.parse(localUser) : {};
+    }, []);
+
+    // Auto-scroll ke pesan paling bawah setiap ada update
     useEffect(() => {
         if (messages.length > 0) {
             bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
         }
     }, [messages]);
 
-    // --- 2. HELPER: WARNA BUBBLE CHAT ---
+    // Helper untuk menentukan gaya visual bubble chat berdasarkan Role
     const getBubbleStyle = (role?: string, isUser?: boolean) => {
         if (isUser) {
             return 'bg-gradient-to-br from-amber-700/90 to-amber-900/90 border border-amber-500/30 text-white rounded-tr-sm shadow-[0_4px_15px_rgba(245,158,11,0.1)]';
@@ -30,8 +36,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages }) => {
         }
     };
 
-    // --- 3. HELPER: MAPPING ROLE UNTUK USERPHOTO ---
-    // UserPhoto butuh 'ANGGOTA', tapi Backend mungkin kirim 'USER'
+    // Mapping string Role dari Backend ke tipe yang diterima UserPhoto
     const mapRoleToUI = (role?: string): 'ADMIN' | 'LEADER' | 'BOT' | 'ANGGOTA' => {
         if (role === 'ADMIN') return 'ADMIN';
         if (role === 'LEADER' || role === 'GUILD_LEADER') return 'LEADER';
@@ -42,31 +47,26 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages }) => {
     return (
         <div className="flex flex-col space-y-4 md:space-y-6 pb-4">
             {messages.map((msg: any, idx) => {
-                // Ambil data user yang sedang login dari LocalStorage
-                const localUser = localStorage.getItem('user');
-                const userData = localUser ? JSON.parse(localUser) : {};
+                // Gunakan ID unik dari database agar rendering real-time stabil
+                const messageKey = msg.id || `chat-${idx}-${msg.createdAt}`;
 
-                // Cek apakah ini pesan saya sendiri?
-                // Kita cek berdasarkan ID (jika ada) atau Role 'user' (fallback FE)
-                const isUser = (msg.senderId && msg.senderId === userData.id) || msg.role === 'user';
+                // Cek identitas pengirim menggunakan ID dari DTO
+                const isUser = msg.senderId === userData.id;
                 const isBot = msg.senderRole === 'BOT';
 
-                // LOGIKA NAMA: Prioritaskan senderName (dari DTO baru), lalu username, lalu fallback
-                const displayName = msg.senderName || msg.username || msg.sender || "Unknown Hero";
-
-                // LOGIKA ROLE: Ambil dari senderRole
+                // Mengambil data dari ChatMessageResponse (DTO)
+                const displayName = msg.senderName || "Unknown Hero";
                 const displayRole = msg.senderRole || 'USER';
 
                 return (
                     <div
-                        key={idx}
+                        key={messageKey}
                         className={`flex ${isUser ? 'justify-end' : 'justify-start'} group animate-in slide-in-from-bottom-2 duration-500`}
                     >
                         <div className={`flex max-w-[85%] md:max-w-[70%] gap-2 md:gap-4 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
 
-                            {/* --- AVATAR (KIRI/KANAN) --- */}
+                            {/* --- BAGIAN AVATAR --- */}
                             <div className="flex-shrink-0 flex flex-col items-center justify-end md:justify-start">
-                                {/* Desktop Size */}
                                 <UserPhoto
                                     src={msg.avatarUrl || null}
                                     alt={displayName}
@@ -74,7 +74,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages }) => {
                                     size="md"
                                     className="hidden md:block"
                                 />
-                                {/* Mobile Size */}
                                 <UserPhoto
                                     src={msg.avatarUrl || null}
                                     alt={displayName}
@@ -84,10 +83,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages }) => {
                                 />
                             </div>
 
-                            {/* --- KONTEN PESAN --- */}
+                            {/* --- BAGIAN KONTEN --- */}
                             <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
 
-                                {/* NAMA PENGIRIM (Hanya jika bukan saya) */}
+                                {/* Nama & Badge Role muncul jika bukan pesan sendiri */}
                                 {!isUser && (
                                     <div className="flex items-center gap-2 mb-1 px-1">
                                         <span className="text-[10px] md:text-xs font-bold text-amber-500/80 tracking-widest uppercase font-rpg">
@@ -106,7 +105,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages }) => {
                                     </div>
                                 )}
 
-                                {/* BUBBLE CHAT */}
                                 <div className={`
                                     relative px-3 py-2 md:px-5 md:py-3.5 
                                     text-xs md:text-sm leading-relaxed 
@@ -115,13 +113,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages }) => {
                                 `}>
                                     <div className="break-words whitespace-pre-wrap font-sans">
                                         {isBot && <Sparkles size={12} className="inline mr-1 text-indigo-400 animate-pulse" />}
-                                        {msg.content || msg.text}
+                                        {msg.content}
                                     </div>
 
-                                    {/* TIMESTAMP & STATUS */}
                                     <div className={`flex items-center gap-1.5 mt-1 md:mt-2 ${isUser ? 'justify-end' : 'justify-start opacity-50 group-hover:opacity-100 transition-opacity'}`}>
                                         <span className={`text-[9px] md:text-[10px] font-mono ${isUser ? 'text-amber-200/60' : 'text-amber-500/40'}`}>
-                                            {/* Format Time jika perlu, atau gunakan raw timestamp */}
                                             {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Just now'}
                                         </span>
                                         {isUser && <CheckCheck size={12} className="text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.5)]" />}
@@ -133,7 +129,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages }) => {
                     </div>
                 );
             })}
-            <div ref={bottomRef} />
+            <div ref={bottomRef} className="h-2" />
         </div>
     );
 };
